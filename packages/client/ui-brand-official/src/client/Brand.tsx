@@ -1,4 +1,4 @@
-import { BrandWordmark, FishLogo } from '@deepseek-ai/dsh-client-ui-primitives'
+import { BrandWordmark, ExpertBrand, FishLogo } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SidebarBrandMarkOwnerProps } from '@deepseek-ai/dsh-client-ui-sidebar/client'
 
 /**
@@ -16,4 +16,14 @@ export function OfficialBrandMark({ size }: SidebarBrandMarkOwnerProps) {
  */
 export function OfficialBrandName() {
   return <BrandWordmark includeMark={false} />
+}
+
+/** @param props - Host-supplied mark size. @returns The company symbol. */
+export function ExpertBrandMark({ size }: SidebarBrandMarkOwnerProps) {
+  return <ExpertBrand size={size} />
+}
+
+/** @returns The lettering paired with the company symbol in the sidebar. */
+export function ExpertBrandName() {
+  return <ExpertBrand size={20} part="name" />
 }

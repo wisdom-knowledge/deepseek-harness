@@ -5,6 +5,7 @@ import { useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import {
   FISH_LOGO_PATH, FISH_LOGO_VIEWBOX, IconChevronDownOutlineRegular, IconFolderCloseRegular, IconFolderOpenRegular,
+  isExpertDesktop,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { workspaceTitleOf } from '@deepseek-ai/dsh-util-workspace-path'
 import type { ConversationContentProps } from '../contract/slots.ts'
@@ -154,7 +155,7 @@ export function HeroShell({ t, renderSlot, headline, children }: HeroShellProps)
           </span>
           <span className={css.titleGroup}>
             {/* Own element: keeps the headline text addressable apart from the badge. */}
-            <span>{headline ?? t('hero.headline')}</span>
+            <span>{headline ?? t(isExpertDesktop() ? 'hero.expertHeadline' : 'hero.headline')}</span>
             {headline === undefined && <span className={css.previewBadge}>{t('hero.preview')}</span>}
           </span>
         </div>

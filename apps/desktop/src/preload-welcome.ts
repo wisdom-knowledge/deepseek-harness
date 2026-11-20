@@ -10,6 +10,9 @@ const locale = process.argv.find(argument => argument.startsWith(prefix))?.slice
 if (locale === undefined) throw new Error('desktop welcome: missing window locale')
 const api: WelcomeApi = {
   ...resolveDesktopLocale(locale),
+  ...(process.argv.includes('--dsh-expert-desktop') ? {
+    confirmExpert: (uuid: string) => ipcRenderer.invoke(WELCOME_IPC.expertConfirm, uuid) as Promise<void>,
+  } : {}),
   analytics: async (eventName, attributes) => {
     if (await api.analyticsEnabled()) await ipcRenderer.invoke(WELCOME_IPC.analytics, eventName, attributes)
   },

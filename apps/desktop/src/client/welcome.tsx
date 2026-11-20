@@ -3,7 +3,7 @@ import '@deepseek-ai/dsh-client-ui-theme/src/styles/design-platform.css'
 import '@deepseek-ai/dsh-client-ui-theme/src/styles/gradient-shadow-text.css'
 import { createRoot } from 'react-dom/client'
 import { flushSync } from 'react-dom'
-import { Welcome } from './WelcomePage.tsx'
+import { ExpertWelcome, Welcome } from './WelcomePage.tsx'
 import type { WelcomeApi } from '../welcome-api.ts'
 
 declare global {
@@ -15,5 +15,10 @@ declare global {
 const container = document.getElementById('root')
 if (container === null) throw new Error('desktop welcome: missing React root')
 const root = createRoot(container)
-flushSync(() => { root.render(<Welcome api={window.dshWelcome} />) })
+const api = window.dshWelcome
+flushSync(() => {
+  root.render(api.confirmExpert === undefined
+    ? <Welcome api={api} />
+    : <ExpertWelcome confirm={api.confirmExpert} />)
+})
 window.addEventListener('pagehide', () => { root.unmount() }, { once: true })

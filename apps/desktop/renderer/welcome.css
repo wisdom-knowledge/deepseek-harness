@@ -102,6 +102,20 @@ body {
   -webkit-user-drag: none;
 }
 
+.expert-welcome {
+  grid-template-rows: 34px minmax(0, 1fr) 48px;
+  padding: 24px 36px 42px;
+}
+
+.expert-welcome-logo {
+  display: block;
+  object-fit: contain;
+}
+
+.expert-welcome .key-form {
+  width: min(100%, 320px);
+}
+
 .tagline {
   margin: 0;
   color: var(--dsw-alias-label-secondary);

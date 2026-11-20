@@ -16,6 +16,8 @@ export interface WelcomeState {
 
 /** Narrow operations available to the native welcome flow. */
 export interface DesktopWelcomeBackend {
+  /** @param apiKey - Packaged expert model credential. @returns after the route and its default are ready. */
+  provisionExpertModel(apiKey: string): Promise<void>
   /** @returns the current Host policy; every read observes live configuration. */
   analyticsEnabled(): Promise<boolean>
   readonly account: DesktopAccountBackend
@@ -132,6 +134,21 @@ export function connectDesktopWelcome(
   return {
     account,
     read,
+    async provisionExpertModel(apiKey) {
+      const ref = 'TRUE_SOTA_API_KEY'
+      const provider = 'true-sota'
+      const model = 'gpt-6.1-sol'
+      await invoke({ namespace: 'settings', method: 'mutate', args: { ns: 'llm-pi-ai', ops: [{
+        op: 'set', path: ['providers', provider],
+        value: { displayName: 'TrueSOTA', apiKeyEnv: ref, api: 'openai-responses',
+          baseURL: 'https://true-sota.com/v1', models: [{ id: model }] },
+      }] } })
+      await invoke({ namespace: 'credentials', method: 'set', args: { ref, value: apiKey } })
+      await invoke({ namespace: 'settings', method: 'mutate', args: { ns: 'agent-default-model', ops: [
+        { op: 'set', path: ['provider'], value: provider },
+        { op: 'set', path: ['model'], value: model },
+      ] } })
+    },
     async analyticsEnabled() {
       const enabled = await invoke({ namespace: 'productAnalytics', method: 'enabled', args: {} }, AbortSignal.timeout(1000))
       if (typeof enabled !== 'boolean') throw new Error('desktop analytics: invalid collection policy')

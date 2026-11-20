@@ -8,6 +8,7 @@ import { isDesktopUpdateChannel } from './settings-file.ts'
 import type { ProductEventMap, ProductEvent } from '@deepseek-ai/dsh-client-product-analytics/types'
 import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 import { access, readFile, writeFile } from 'node:fs/promises'
+import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -49,7 +50,7 @@ import { pruneCrashReports, RendererConsoleTail, writeCrashReport, type CrashRep
 import { OperationJournal } from './operation-journal.ts'
 import { runOperationReportJob, type OperationReportJobResult } from './operation-report-job.ts'
 import { openWelcomeWindow } from './welcome-window.ts'
-import { WELCOME_IPC, needsWelcome, type WelcomeNotice } from './welcome-api.ts'
+import { EXPERT_DESKTOP_NAME, WELCOME_IPC, needsWelcome, type WelcomeNotice } from './welcome-api.ts'
 import { connectDesktopWelcome, type DesktopWelcomeBackend } from './welcome-backend.ts'
 import { DesktopUpdateJournal } from './update-journal.ts'
 import { DesktopUpdatePreparationError } from './update-error.ts'
@@ -89,6 +90,29 @@ let windowsLanguage: string | undefined = readDesktopLocaleCache(app.getPath('us
 let backendReady = false
 /** Error-level console output of the primary window, attached to crash reports. */
 const rendererConsole = new RendererConsoleTail()
+
+const expertModelFile = app.isPackaged
+  ? join(process.resourcesPath, 'expert-model.json')
+  : process.env.DSH_EXPERT_MODEL_FILE
+const expertEdition = expertModelFile !== undefined && existsSync(expertModelFile)
+if (expertEdition) {
+  const data = join(app.getPath('appData'), EXPERT_DESKTOP_NAME)
+  mkdirSync(data, { recursive: true, mode: 0o700 })
+  app.setName(EXPERT_DESKTOP_NAME)
+  app.setPath('userData', data)
+}
+
+async function readExpertApiKey(): Promise<string | undefined> {
+  if (!expertEdition || expertModelFile === undefined) return undefined
+  try {
+    const data: unknown = JSON.parse(await readFile(expertModelFile, 'utf8'))
+    if (typeof data === 'object' && data !== null && 'apiKey' in data
+      && typeof data.apiKey === 'string' && /^[\x21-\x7e]+$/.test(data.apiKey)) return data.apiKey
+  } catch (_invalidModelFile: unknown) {
+    // The model file contains a credential. Do not forward parser diagnostics.
+  }
+  throw new Error('专家出题助手的内置模型配置不可用')
+}
 
 // Platform-conventional logs directory (macOS ~/Library/Logs/<name>, otherwise under userData);
 // set before ready so the first fatal report already resolves under it.
@@ -287,6 +311,7 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     } : {}),
     webPreferences: {
       preload,
+      ...(primary && expertEdition ? { additionalArguments: ['--dsh-expert-desktop'] } : {}),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
@@ -379,12 +404,18 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
 }
 
 async function main(): Promise<void> {
+  const expertApiKey = await readExpertApiKey()
+  if (expertEdition) nativeTheme.themeSource = 'light'
   const desktopSettings = await readDesktopSettings(app.getPath('userData'))
   void pruneCrashReports(app.getPath('logs'))
   const journalDirectory = process.env.DSH_DESKTOP_UPDATE_JOURNAL_DIR
   const updateJournal = journalDirectory === undefined ? undefined : new DesktopUpdateJournal(journalDirectory, app.getVersion())
   const resources = runtimeResources()
-  const paths = resolveDesktopPaths()
+  const expertHome = expertEdition ? join(app.getPath('userData'), 'harness') : undefined
+  const expertSkillsDir = expertEdition
+    ? app.isPackaged ? join(process.resourcesPath, 'expert-skills') : process.env.DSH_EXPERT_SKILLS_DIR
+    : undefined
+  const paths = resolveDesktopPaths(expertHome)
   const development = !app.isPackaged
   const primaryRuntime = development
     ? developmentPrimaryRuntime()
@@ -402,7 +433,14 @@ async function main(): Promise<void> {
     return result.environment
   })
   let hostEnvironment: NodeJS.ProcessEnv = process.env
-  const prepareHostEnvironment = async (): Promise<void> => { hostEnvironment = await loginShell }
+  const prepareHostEnvironment = async (): Promise<void> => {
+    const environment = await loginShell
+    hostEnvironment = expertHome === undefined ? environment : {
+      ...environment,
+      DSH_HOME: expertHome,
+      ...(expertSkillsDir !== undefined && existsSync(expertSkillsDir) ? { DSH_BUNDLED_SKILL_DIR: expertSkillsDir } : {}),
+    }
+  }
   let quitting = false
   let startup: Promise<void> | undefined
   let workspaceRecovery: Promise<void> | undefined
@@ -428,6 +466,7 @@ async function main(): Promise<void> {
     if (failure?.status === 'rejected') throw failure.reason
   }
   let enteredWorkspace = false
+  let expertConfirmed = false
   // NSIS passes --updated when it launches the application after installation.
   let raiseAfterUpdate = process.platform === 'win32' && process.argv.includes('--updated')
   let shellInstallerOwnsQuit = false
@@ -553,6 +592,7 @@ async function main(): Promise<void> {
         if (ready.injections === undefined) throw new Error('Desktop Host did not provide boot injections')
         injections = ready.injections
         welcomeBackend = connectDesktopWelcome(ready.url, cookie)
+        if (expertApiKey !== undefined) await welcomeBackend.provisionExpertModel(expertApiKey)
         analyticsEnabled = await welcomeBackend.analyticsEnabled().catch(() => false)
         if (!reportedLaunch) { reportedLaunch = true; void track('desktop_app_launch', {}) }
         stopAccount?.()
@@ -800,6 +840,9 @@ async function main(): Promise<void> {
     if (url.hostname === 'shell') return serveWebDocument(request, join(app.getAppPath(),
       url.pathname === '/design-platform.css' ? 'lib/welcome' : 'renderer'))
     if (url.hostname === 'app') {
+      if (expertEdition && url.pathname === '/assets/expert-company-logo.svg') {
+        return serveWebDocument(request, join(app.getAppPath(), 'renderer'))
+      }
       if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname.startsWith('/assets/')
         || ['/favicon.svg', '/manifest.webmanifest'].includes(url.pathname)) {
         return serveWebDocument(request, join(resources.dsh, 'node_modules', '@deepseek-ai', 'dsh-web-frontend', 'dist'))
@@ -879,6 +922,7 @@ async function main(): Promise<void> {
   ipcMain.handle(PLATFORM_IPC.close, (event) => { assertMainApplication(event); platformView.close() })
   // Only the main window may synchronize its palette with the native material.
   ipcMain.on(DESKTOP_IPC.nativeThemeSet, (event, source: unknown) => {
+    if (expertEdition) return
     if (mainWindow === undefined || event.sender !== mainWindow.webContents
       || event.senderFrame !== mainWindow.webContents.mainFrame
       || !event.senderFrame.url.startsWith(`${SCHEME}://app/`)) return
@@ -1368,7 +1412,7 @@ async function main(): Promise<void> {
     return window
   }
   const enterWorkspace = async ({ activate = true }: { activate?: boolean } = {}): Promise<void> => {
-    if (quitting) return
+    if (quitting || (expertEdition && !expertConfirmed)) return
     const window = mainWindow ?? createMainWindow()
     await navigateMain(applicationUrl)
     if (isQuitting() || recovery.active || window.isDestroyed()) return
@@ -1401,6 +1445,14 @@ async function main(): Promise<void> {
     }
     openingWelcome ??= (async () => {
       welcomeWindow = await openWelcomeWindow(locale, {
+        ...(expertEdition ? { confirmExpert: async () => {
+          expertConfirmed = true
+          try { await enterWorkspace() }
+          catch (error) {
+            expertConfirmed = false
+            throw error
+          }
+        } } : {}),
         analytics: track,
         analyticsEnabled: () => Promise.resolve(analyticsEnabled),
         takeNotice: () => {
@@ -1456,12 +1508,13 @@ async function main(): Promise<void> {
     if (quitting || recovery.active) return
     const state = await readWelcomeState()
     if (isQuitting() || backend.state.phase !== 'ready') return
-    nativeTheme.themeSource = state.themePreference
+    nativeTheme.themeSource = expertEdition ? 'light' : state.themePreference
     locale = resolveDesktopStartupLocale(state.localePreference, systemLanguages)
     writeDesktopLocaleCache(app.getPath('userData'), locale.id)
     windowsLanguage = locale.id
     refreshApplicationMenu()
-    if (!enteredWorkspace && needsWelcome({ loggedIn: state.loggedIn, hasApiKey: state.hasApiKey })) {
+    const showEntry = expertEdition ? !expertConfirmed : needsWelcome(state)
+    if (!enteredWorkspace && showEntry) {
       // A later login must retain its own activation policy instead of replaying startup focus.
       raiseAfterUpdate = false
       await showWelcome()
@@ -1485,7 +1538,7 @@ async function main(): Promise<void> {
     window.focus()
   }
 
-  if (app.isPackaged || process.env.DSH_DESKTOP_DEV_APP === '1') app.setAsDefaultProtocolClient('dsh')
+  if (!expertEdition && (app.isPackaged || process.env.DSH_DESKTOP_DEV_APP === '1')) app.setAsDefaultProtocolClient('dsh')
   app.on('open-url', (event, url) => {
     event.preventDefault()
     if (url === 'dsh://open' || url === 'dsh://open/') focusPrimaryWindow()

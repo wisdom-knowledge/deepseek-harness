@@ -217,6 +217,10 @@ Dependency installation does not run the locked Electron package's separate bina
 
 ### Startup onboarding
 
+Setting `DSH_EXPERT_MODEL_FILE` to an absolute path to a private JSON file with an `apiKey` enables the local expert edition when launching from source or packaging. The packaged application reads the file from its own resources, provisions the TrueSOTA model in a separate Harness home, uses the company logo and light appearance, and requires a nonempty UUID on each launch. It accepts the UUID locally without an identity lookup. The installation bundle contains the API key and should be distributed only to its intended testers.
+
+Set `DSH_EXPERT_SKILLS_DIR` to an absolute directory of skill bundles to include them with the expert edition. Place each skill’s `SKILL.md` and its companion files under its own immediate subdirectory. The expert Host discovers the bundled directory through the standard skill provider, and the packaged application loads it from its resources.
+
 The API-key input starts empty and uses `autocomplete="new-password"` to ask Chromium not to autofill saved login passwords.
 
 Repeated launches and `dsh://open` keep the workspace hidden until the startup credential check or a welcome action permits entry. Entering from Welcome places keyboard focus on the document without selecting a sidebar control; Tab navigation remains available.

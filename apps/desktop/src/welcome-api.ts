@@ -6,6 +6,7 @@ import type { DesktopLocale } from './locale.ts'
 
 /** Private native welcome channels, installed only while its window exists. */
 export const WELCOME_IPC = {
+  expertConfirm: 'dsh-welcome:expert-confirm',
   saveApiKey: 'dsh-welcome:save-api-key',
   analytics: 'dsh-welcome:analytics',
   analyticsEnabled: 'dsh-welcome:analytics-enabled',
@@ -17,6 +18,9 @@ export const WELCOME_IPC = {
   takeNotice: 'dsh-welcome:take-notice',
 } as const
 
+/** Product title for the locally provisioned expert edition. */
+export const EXPERT_DESKTOP_NAME = '智能知识出题助手'
+
 /** Credential writes return a safe outcome without exposing Host diagnostics. */
 export type WelcomeSaveResult = { readonly ok: true } | { readonly ok: false }
 
@@ -27,6 +31,8 @@ type WelcomeEventName = 'auth_page_view' | 'auth_page_click' | 'api_key_save_cli
 
 /** Host-owned operations used by the welcome window. */
 export interface WelcomeOperations {
+  /** @param uuid - Expert identifier submitted for the current launch. @returns when the workspace opens. */
+  confirmExpert?(uuid: string): Promise<void>
   /** @param eventName - allowed welcome event. @param attributes - approved fields without credentials. */
   analytics?<K extends WelcomeEventName>(eventName: K, attributes: ProductEventMap[K]): Promise<void>
   /** @returns the Host's current effective collection policy. */

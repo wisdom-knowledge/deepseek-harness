@@ -217,6 +217,10 @@ Web 侧的对应命令是 `pnpm run dev:web` 与 `pnpm run start:web`，见[开�
 
 ### 启动引导
 
+从源码启动或打包时，可将 `DSH_EXPERT_MODEL_FILE` 设为含 `apiKey` 的私有 JSON 文件的绝对路径，以启用本地专家版。打包应用从自身资源读取该文件，在独立的 Harness home 配置 TrueSOTA 模型，使用公司标志和浅色外观，每次启动都要求输入非空 UUID。UUID 仅在本地接收，暂不校验身份。安装包内含 API Key，分发范围应限于本次验收人员。
+
+将 `DSH_EXPERT_SKILLS_DIR` 设为 skill bundle 根目录的绝对路径，可将其中的 Skill 随专家版一起提供。每个 Skill 的 `SKILL.md` 和随附文件放在各自的直属子目录中。专家版 Host 使用标准 Skill 提供方发现该目录，打包应用从自身资源加载。
+
 API Key 输入框初始为空，并通过 `autocomplete="new-password"` 请求 Chromium 不要自动填入已保存的登录密码。
 
 重复启动和 `dsh://open` 会保持工作区隐藏，直到启动凭据检查或欢迎页操作允许进入。从 Welcome 进入时，键盘焦点落在文档上，不选中侧边栏控件；Tab 导航仍可使用。

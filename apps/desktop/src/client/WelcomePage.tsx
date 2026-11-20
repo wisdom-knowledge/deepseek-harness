@@ -4,9 +4,61 @@ import type { FormEvent } from 'react'
 import { Toast } from '@deepseek-ai/dsh-client-ui-primitives/src/Toast.tsx'
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives/src/StateDot.tsx'
 import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
-import type { WelcomeApi } from '../welcome-api.ts'
+import { EXPERT_DESKTOP_NAME, type WelcomeApi } from '../welcome-api.ts'
 
 type Page = 'entry' | 'key' | 'account'
+
+/**
+ * Collect the expert identifier for this launch before revealing the workspace.
+ * @param props.confirm - Native confirmation callback.
+ * @returns Local UUID form.
+ */
+export function ExpertWelcome({ confirm }: { confirm: (uuid: string) => Promise<void> }) {
+  const [uuid, setUuid] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    document.documentElement.lang = 'zh-CN'
+    document.title = EXPERT_DESKTOP_NAME
+  }, [])
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    if (busy || uuid.trim() === '') return
+    setBusy(true)
+    setFailed(false)
+    try { await confirm(uuid.trim()) }
+    catch {
+      setFailed(true)
+      setBusy(false)
+    }
+  }
+
+  return <>
+    <div className="titlebar" aria-hidden="true" />
+    <main className="welcome expert-welcome" aria-labelledby="expert-heading">
+      <img className="expert-welcome-logo" src="assets/expert-company-logo.svg" alt="智能知识" width="148" height="34" />
+      <form id="expert-form" className="key-form" onSubmit={(event) => { void submit(event) }} aria-busy={busy}>
+        <header className="key-heading">
+          <h1 id="expert-heading">专家出题助手</h1>
+        </header>
+        <div className="key-field">
+          <label className="visually-hidden" htmlFor="expert-uuid">UUID</label>
+          <input autoFocus id="expert-uuid" type="text" autoComplete="off" spellCheck={false} required
+            placeholder="输入专家 UUID" value={uuid} disabled={busy}
+            onChange={(event) => { setUuid(event.target.value); setFailed(false) }} />
+          {failed && <p className="key-error" role="alert">暂时无法打开工作区，请重试。</p>}
+        </div>
+      </form>
+      <div className="actions">
+        <button className="primary" type="submit" form="expert-form" disabled={busy || uuid.trim() === ''}>
+          {busy ? '正在打开' : '确认'}
+        </button>
+      </div>
+    </main>
+  </>
+}
 
 /**
  * Render the standalone welcome flow using shell-owned operations and localized copy.

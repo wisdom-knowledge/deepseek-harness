@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { app, BrowserWindow, ipcMain, type BrowserWindowConstructorOptions, type IpcMainInvokeEvent } from 'electron'
 import type { DesktopLocale } from './locale.ts'
-import { WELCOME_IPC, type WelcomeOperations } from './welcome-api.ts'
+import { EXPERT_DESKTOP_NAME, WELCOME_IPC, type WelcomeOperations } from './welcome-api.ts'
 
 /**
  * Resolve the fixed-size welcome window's native material and controls.
@@ -58,6 +58,13 @@ let disposeActiveHandlers: (() => void) | undefined
  */
 export async function openWelcomeWindow(locale: DesktopLocale, operations: WelcomeOperations): Promise<BrowserWindow> {
   const options = welcomeWindowOptions(process.platform, locale)
+  const confirmExpert = operations.confirmExpert
+  if (confirmExpert !== undefined) {
+    options.width = 460
+    options.height = 400
+    options.title = EXPERT_DESKTOP_NAME
+    options.webPreferences?.additionalArguments?.push('--dsh-expert-desktop')
+  }
   const window = new BrowserWindow(options)
   disposeActiveHandlers?.()
   let active = true
@@ -66,7 +73,7 @@ export async function openWelcomeWindow(locale: DesktopLocale, operations: Welco
     active = false
     for (const channel of [
       WELCOME_IPC.analyticsEnabled, WELCOME_IPC.analytics, WELCOME_IPC.takeNotice, WELCOME_IPC.saveApiKey,
-      WELCOME_IPC.skip, WELCOME_IPC.start, WELCOME_IPC.cancel, WELCOME_IPC.copyLink,
+      WELCOME_IPC.skip, WELCOME_IPC.start, WELCOME_IPC.cancel, WELCOME_IPC.copyLink, WELCOME_IPC.expertConfirm,
     ]) {
       ipcMain.removeHandler(channel)
     }
@@ -78,6 +85,11 @@ export async function openWelcomeWindow(locale: DesktopLocale, operations: Welco
       throw new Error('desktop welcome: rejected action from an unowned frame')
     }
   }
+  if (confirmExpert !== undefined) ipcMain.handle(WELCOME_IPC.expertConfirm, async (event, uuid: unknown) => {
+    assertSender(event)
+    if (typeof uuid !== 'string' || uuid.trim() === '') throw new Error('desktop expert: enter a UUID')
+    await confirmExpert(uuid)
+  })
   ipcMain.handle(WELCOME_IPC.analyticsEnabled, (event) => {
     assertSender(event)
     return operations.analyticsEnabled()

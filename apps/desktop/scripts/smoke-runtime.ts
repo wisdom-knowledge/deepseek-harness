@@ -1,6 +1,6 @@
 /** Boot the materialized target runtime without access to a user's Harness profile. */
 
-import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -40,9 +40,15 @@ export async function smokeDesktopRuntime(
 ): Promise<void> {
   const home = mkdtempSync(join(tmpdir(), 'dsh-desktop-smoke-'))
   const profile = join(home, 'profiles', 'desktop')
+  const expertSkillDir = join(resourcesRuntime, '..', 'expert-skills')
+  const expertSkills = existsSync(expertSkillDir)
+    ? readdirSync(expertSkillDir, { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name).sort()
+    : []
   const hostEnvironment = {
     ...Object.fromEntries(Object.entries(environment).filter(([name]) => !/^(?:npm|pnpm|corepack)_/iu.test(name))),
     DSH_HOME: home, HOME: home, USERPROFILE: home,
+    DSH_AGENTS_HOME: join(home, 'agents'),
+    ...(expertSkills.length === 0 ? {} : { DSH_BUNDLED_SKILL_DIR: expertSkillDir }),
     XDG_CONFIG_HOME: home, XDG_CACHE_HOME: home, XDG_STATE_HOME: home,
     APPDATA: home, LOCALAPPDATA: home,
     npm_config_userconfig: join(home, 'npmrc'), npm_config_globalconfig: join(home, 'npmrc'),
@@ -117,12 +123,23 @@ export function apply(ctx) {
   ctx.effect(() => ctx.webServer.register({ kind: 'exact', path: '/desktop-smoke-skills',
     async handler(_request, response) {
       try {
-        const names = ${JSON.stringify(OFFICE_SKILLS)}
-        const listed = new Set((await ctx.skills.list()).map(skill => skill.name))
-        const loaded = await Promise.all(names.map(async name => {
-          const skill = listed.has(name) ? await ctx.skills.get(name) : undefined
-          return { name, bytes: skill?.content.length ?? 0 }
-        }))
+        const expertNames = ${JSON.stringify(expertSkills)}
+        const handle = expertNames.length === 0 ? undefined : await ctx.agents.create({
+          sessionId: 'desktop-smoke-skills',
+          setup: agentCtx => ctx.agentPresets.mount(agentCtx, 'standard').then(() => undefined),
+        })
+        let loaded
+        try {
+          const names = [...${JSON.stringify(OFFICE_SKILLS)}, ...expertNames]
+          const lookup = { scope: handle?.agent }
+          const listed = new Set((await ctx.skills.list(lookup)).map(skill => skill.name))
+          loaded = await Promise.all(names.map(async name => {
+            const skill = listed.has(name) ? await ctx.skills.get(name, lookup) : undefined
+            return { name, bytes: skill?.content.length ?? 0, source: skill?.source }
+          }))
+        } finally {
+          await handle?.dispose()
+        }
         response.end(JSON.stringify(loaded))
       } catch (error) {
         response.statusCode = 500
@@ -171,7 +188,7 @@ export function apply(ctx) {
   }
 }
 `)
-    writeFileSync(join(plugin, 'bundle.yml'), '- insert:\n    - id: desktop-runtime-smoke-plugin\n      name: desktop-runtime-smoke-plugin\n      inject: [webServer, officeKit, pluginManager, skills]\n')
+    writeFileSync(join(plugin, 'bundle.yml'), '- insert:\n    - id: desktop-runtime-smoke-plugin\n      name: desktop-runtime-smoke-plugin\n      inject: [webServer, officeKit, pluginManager, skills, agents, agentPresets]\n')
     cpSync(plugin, join(profile, 'node_modules', pluginName), { recursive: true })
     const manifest = JSON.parse(readFileSync(join(profile, 'package.json'), 'utf8')) as {
       dependencies?: Record<string, string>
@@ -202,9 +219,15 @@ export function apply(ctx) {
     }
     const skills = await fetch(new URL('/desktop-smoke-skills', ready.url), { headers: { cookie }, signal: AbortSignal.timeout(120_000) })
     if (!skills.ok) throw new Error(`desktop runtime: Office skill loading failed: ${await skills.text()}`)
-    const loadedSkills = await skills.json() as { name: string; bytes: number }[]
+    const loadedSkills = await skills.json() as { name: string; bytes: number; source?: string }[]
     assertOfficeSkillsLoadable(loadedSkills)
     console.log('desktop runtime: packaged Office skills listed and loaded')
+    for (const name of expertSkills) {
+      if (!loadedSkills.some(skill => skill.name === name && skill.source === 'bundled' && skill.bytes > 0)) {
+        throw new Error(`desktop runtime: packaged expert skill "${name}" was not loaded from the app resources`)
+      }
+      console.log(`desktop runtime: packaged expert skill listed and loaded: ${name}`)
+    }
     for (const { extension } of inputs) {
       const converted = await fetch(new URL(`/desktop-smoke-office/${extension}`, ready.url), {
         headers: { cookie }, signal: AbortSignal.timeout(120_000),

@@ -626,6 +626,12 @@ describe('ConversationRoot resident composer', () => {
     expect(b.view.getByText('Selected Folder')).toBeTruthy()
   })
 
+  it('shows the expert headline in the Desktop expert edition', () => {
+    vi.stubGlobal('__DSH_EXPERT_DESKTOP__', true)
+    const b = mount(sessionSnapshotOf({ blank: true }))
+    expect(b.view.getByText('用你的专业，塑造更好的 AI')).toBeTruthy()
+  })
+
   it('keeps a rejected first prompt engaging instead of returning to the Hero', () => {
     const failed = sessionSnapshotOf({
       blank: true,
