@@ -403,7 +403,8 @@ actor AXWorker {
                 let requestedWindow = try params.optionalWindowID()
                 if let requestedWindow { try coordinateSnapshot(handle, params, requestedWindow) }
                 let selected = try element(handle, params)
-                let enclosing = try ax().enclosingWindow(selected)
+                let access = ax()
+                let enclosing = try access.enclosingWindow(selected)
                 if let requestedWindow, enclosing.id != requestedWindow {
                     throw NativeFailure(code: "STALE_SNAPSHOT", message: "Element belongs to window \(enclosing.id); select that window and read its tree")
                 }
@@ -411,11 +412,11 @@ actor AXWorker {
                     _ = try NativePlatform.ownedWindow(identity.pid, enclosing.id)
                     if !useSystemPointer { return try moveUsingAX(selected, windowID: enclosing.id, handle: handle) }
                 } else {
-                    try ax().requireEnabled(selected)
+                    try access.requireEnabled(selected)
                 }
                 elementWindow = enclosing.element
-                guard let bounds = try ax().bounds(selected), bounds.width > 0, bounds.height > 0 else { throw NativeFailure(code: "NATIVE_ERROR", message: "Element has no pointer bounds") }
-                window = try WindowGeometry.resolve(owner: identity, windowID: enclosing.id) { try ax().bounds(enclosing.element) }
+                guard let bounds = try access.bounds(selected), bounds.width > 0, bounds.height > 0 else { throw NativeFailure(code: "NATIVE_ERROR", message: "Element has no pointer bounds") }
+                window = try WindowGeometry.resolve(owner: identity, windowID: enclosing.id) { try access.bounds(enclosing.element) }
                 point = WindowPoint(x: bounds.x + bounds.width / 2 - window.bounds.x, y: bounds.y + bounds.height / 2 - window.bounds.y)
             } else {
                 let id = try params.windowID()
