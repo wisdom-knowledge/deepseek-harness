@@ -70,6 +70,10 @@ export function createElectronBuilderConfig(
       }
     }
   }
+  const expertIcon = expertModelFile === undefined ? undefined : fileURLToPath(new URL('../resources/icon-expert.png', import.meta.url))
+  const windowsIcon = expertIcon ?? fileURLToPath(new URL('../resources/icon-windows.png', import.meta.url))
+  const windowsTrayIcon = fileURLToPath(new URL(expertIcon === undefined
+    ? '../resources/tray-windows.ico' : '../resources/tray-expert-windows.ico', import.meta.url))
   const skipNotarization = env.DSH_DESKTOP_MACOS_SKIP_NOTARIZATION === '1'
   if (env.DSH_DESKTOP_MACOS_SKIP_NOTARIZATION !== undefined && !['0', '1'].includes(env.DSH_DESKTOP_MACOS_SKIP_NOTARIZATION)) {
     throw new Error('desktop package: DSH_DESKTOP_MACOS_SKIP_NOTARIZATION must be 0 or 1')
@@ -175,12 +179,12 @@ export function createElectronBuilderConfig(
         { from: fileURLToPath(new URL('../resources/expert-model.patch.yml', import.meta.url)), to: 'expert-model.patch.yml' },
       ]),
       ...(expertSkillsDir === undefined ? [] : [{ from: expertSkillsDir, to: 'expert-skills' }]),
-      { from: fileURLToPath(new URL('../resources/icon-windows.png', import.meta.url)), to: 'icon.png' },
+      { from: windowsIcon, to: 'icon.png' },
       // Windows tray bitmaps; macOS keeps the Dock and ships no menu bar icon.
-      ...(packagesWindows ? [{ from: fileURLToPath(new URL('../resources/tray-windows.ico', import.meta.url)), to: 'tray.ico' }] : []),
+      ...(packagesWindows ? [{ from: windowsTrayIcon, to: 'tray.ico' }] : []),
     ],
     mac: {
-      icon: fileURLToPath(new URL('../resources/icon-macos.png', import.meta.url)),
+      icon: expertIcon ?? fileURLToPath(new URL('../resources/icon-macos.png', import.meta.url)),
       category: 'public.app-category.developer-tools',
       // macOS matches the application locale against this bundle, not Electron Framework resources.
       extendInfo: {
@@ -262,7 +266,7 @@ export function createElectronBuilderConfig(
       )
     },
     win: {
-      icon: fileURLToPath(new URL('../resources/icon-windows.png', import.meta.url)),
+      icon: windowsIcon,
       forceCodeSigning: !unsigned,
       signtoolOptions: {
         sign: windowsSigner,

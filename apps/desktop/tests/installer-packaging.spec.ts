@@ -21,7 +21,7 @@ vi.mock('node:fs/promises', async importOriginal => ({
 }))
 
 describe('installer preparation preserves application dependencies', () => {
-  it.each(['win32', 'darwin'] as const)('bundles the repo skills in expert packages on %s', async (platform) => {
+  it.each(['win32', 'darwin'] as const)('uses the company icon and repo skills in expert packages on %s', async (platform) => {
     const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
     const config = createElectronBuilderConfig({
       DSH_DESKTOP_APP_ID: 'com.meetchances.expert-assistant',
@@ -30,12 +30,21 @@ describe('installer preparation preserves application dependencies', () => {
       DSH_DESKTOP_UNSIGNED: '1',
       DSH_EXPERT_MODEL_FILE: 'test-expert-model.json',
     }, platform, 'x64')
+    const icon = readFileSync(new URL('../resources/icon-expert.png', import.meta.url))
     const skills = config.extraResources.find(resource => resource.to === 'expert-skills')
     expect(config.extraResources.find(resource => resource.to === 'expert-model.patch.yml')?.from)
       .toBe(fileURLToPath(new URL('../resources/expert-model.patch.yml', import.meta.url)))
     expect(skills?.from).toBe(fileURLToPath(new URL('../resources/expert-skills', import.meta.url)))
     for (const name of ['ale-task-interviewer', 'ale-reference-interviewer']) {
       expect(readFileSync(join(skills!.from, name, 'SKILL.md'), 'utf8')).toContain(`name: ${name}`)
+    }
+    expect(readFileSync(config[platform === 'darwin' ? 'mac' : 'win'].icon)).toEqual(icon)
+    expect(readFileSync(config.extraResources.find(resource => resource.to === 'icon.png')!.from)).toEqual(icon)
+    const tray = config.extraResources.find(resource => resource.to === 'tray.ico')
+    if (platform === 'win32') {
+      expect(readFileSync(tray!.from)).toEqual(readFileSync(new URL('../resources/tray-expert-windows.ico', import.meta.url)))
+    } else {
+      expect(tray).toBeUndefined()
     }
   })
 
