@@ -1,0 +1,4 @@
+# The desktop Host applies this overlay after the user's profile patches.
+- id: ui-settings-account
+  config:
+    contactFormUrl: https://meetchances.feishu.cn/share/base/shrcnML7Au76GNQ8wUNJKfM94oc

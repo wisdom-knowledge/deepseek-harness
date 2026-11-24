@@ -161,7 +161,10 @@ export function createElectronBuilderConfig(
     asarUnpack: unpack,
     extraResources: [
       { from: buildPaths.runtime, to: 'runtime' },
-      ...(expertModelFile === undefined ? [] : [{ from: expertModelFile, to: 'expert-model.json' }]),
+      ...(expertModelFile === undefined ? [] : [
+        { from: expertModelFile, to: 'expert-model.json' },
+        { from: fileURLToPath(new URL('../resources/expert-model.patch.yml', import.meta.url)), to: 'expert-model.patch.yml' },
+      ]),
       ...(expertSkillsDir === undefined ? [] : [{ from: expertSkillsDir, to: 'expert-skills' }]),
       { from: fileURLToPath(new URL('../resources/icon-windows.png', import.meta.url)), to: 'icon.png' },
       // Windows tray bitmaps; macOS keeps the Dock and ships no menu bar icon.
