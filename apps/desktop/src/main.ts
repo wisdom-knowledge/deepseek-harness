@@ -91,27 +91,13 @@ let backendReady = false
 /** Error-level console output of the primary window, attached to crash reports. */
 const rendererConsole = new RendererConsoleTail()
 
-const expertModelFile = app.isPackaged
-  ? join(process.resourcesPath, 'expert-model.json')
-  : process.env.DSH_EXPERT_MODEL_FILE
-const expertEdition = expertModelFile !== undefined && existsSync(expertModelFile)
+const expertEdition = app.isPackaged ? existsSync(join(process.resourcesPath, 'expert-model.patch.yml'))
+  : process.env.DSH_EXPERT_EDITION === '1' || process.env.DSH_EXPERT_MODEL_FILE !== undefined
 if (expertEdition) {
   const data = join(app.getPath('appData'), EXPERT_DESKTOP_NAME)
   mkdirSync(data, { recursive: true, mode: 0o700 })
   app.setName(EXPERT_DESKTOP_NAME)
   app.setPath('userData', data)
-}
-
-async function readExpertApiKey(): Promise<string | undefined> {
-  if (!expertEdition || expertModelFile === undefined) return undefined
-  try {
-    const data: unknown = JSON.parse(await readFile(expertModelFile, 'utf8'))
-    if (typeof data === 'object' && data !== null && 'apiKey' in data
-      && typeof data.apiKey === 'string' && /^[\x21-\x7e]+$/.test(data.apiKey)) return data.apiKey
-  } catch (_invalidModelFile: unknown) {
-    // The model file contains a credential. Do not forward parser diagnostics.
-  }
-  throw new Error('专家出题助手的内置模型配置不可用')
 }
 
 // Platform-conventional logs directory (macOS ~/Library/Logs/<name>, otherwise under userData);
@@ -404,7 +390,6 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
 }
 
 async function main(): Promise<void> {
-  const expertApiKey = await readExpertApiKey()
   if (expertEdition) nativeTheme.themeSource = 'light'
   const desktopSettings = await readDesktopSettings(app.getPath('userData'))
   void pruneCrashReports(app.getPath('logs'))
@@ -439,6 +424,7 @@ async function main(): Promise<void> {
     hostEnvironment = expertHome === undefined ? environment : {
       ...environment,
       DSH_HOME: expertHome,
+      DSH_EXPERT_MODEL_BASE_URL: expertCloudOrigin ? new URL('/v1', expertCloudOrigin).href : 'https://unconfigured.invalid/v1',
       ...(expertSkillsDir !== undefined && existsSync(expertSkillsDir) ? { DSH_BUNDLED_SKILL_DIR: expertSkillsDir } : {}),
     }
   }
@@ -599,7 +585,11 @@ async function main(): Promise<void> {
         if (ready.injections === undefined) throw new Error('Desktop Host did not provide boot injections')
         injections = ready.injections
         welcomeBackend = connectDesktopWelcome(ready.url, cookie)
-        if (expertApiKey !== undefined) await welcomeBackend.provisionExpertModel(expertApiKey)
+        if (expertEdition) {
+          expertConfirmed = false
+          mainWindow?.destroy()
+          await welcomeBackend.clearExpertModel()
+        }
         analyticsEnabled = await welcomeBackend.analyticsEnabled().catch(() => false)
         if (!reportedLaunch) { reportedLaunch = true; void track('desktop_app_launch', {}) }
         stopAccount?.()
@@ -742,6 +732,10 @@ async function main(): Promise<void> {
   }
 
   const manifest: unknown = JSON.parse(await readFile(join(app.getAppPath(), 'package.json'), 'utf8'))
+  const expertCloudOrigin = app.isPackaged
+    ? manifest && typeof manifest === 'object' && 'expertCloudOrigin' in manifest && typeof manifest.expertCloudOrigin === 'string'
+      ? manifest.expertCloudOrigin : undefined
+    : process.env.DSH_EXPERT_CLOUD_ORIGIN
   const packagedChannel = desktopUpdateChannel(manifest)
   const channelSettings = new DesktopUpdateSettings(app.getPath('userData'), packagedChannel)
   const initialChannel = await channelSettings.load()
@@ -1454,12 +1448,17 @@ async function main(): Promise<void> {
     }
     openingWelcome ??= (async () => {
       welcomeWindow = await openWelcomeWindow(locale, {
-        ...(expertEdition ? { confirmExpert: async () => {
-          expertConfirmed = true
-          try { await enterWorkspace() }
+        ...(expertEdition ? { expertCloudOrigin, confirmExpert: async (apiKey: string) => {
+          if (!welcomeBackend) throw new Error('desktop welcome: backend unavailable')
+          try {
+            await welcomeBackend.provisionExpertModel(apiKey)
+            expertConfirmed = true
+            await enterWorkspace()
+          }
           catch (error) {
             expertConfirmed = false
             mainWindow?.destroy()
+            await welcomeBackend.clearExpertModel()
             throw error
           }
         } } : {}),

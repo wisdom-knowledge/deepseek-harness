@@ -136,6 +136,7 @@ vi.mock('../src/host-process.ts', () => ({
 vi.mock('../src/welcome-backend.ts', () => ({
   connectDesktopWelcome: () => ({
     provisionExpertModel: vi.fn(),
+    clearExpertModel: vi.fn(),
     analyticsEnabled: async () => false,
     readLocalePreference: async () => state.preference,
     read: async () => {

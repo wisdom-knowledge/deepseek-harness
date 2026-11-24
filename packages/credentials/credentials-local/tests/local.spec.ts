@@ -92,6 +92,24 @@ describe('layering and reads', () => {
     expect(await ctx.credentials.describe(KEY)).toEqual({ configured: false, writable: true })
   })
 
+  it('ignores inherited and legacy values for process-only refs and starts the next provider empty', async () => {
+    const path = join(await tempDir(), '.credentials.yaml')
+    await writeCredentials(path, 'version: 1\nrefs:\n  DSH_CRED_TEST: old\n  DSH_CRED_OTHER: keep\n')
+    vi.stubEnv('DSH_CRED_TEST', 'inherited')
+    const config = { path, watch: false, processOnlyRefs: [KEY] }
+    const first = await boot(config)
+    expect(await first.credentials.resolve(KEY)).toBeUndefined()
+    await first.credentials.unset(KEY)
+    await first.credentials.set(KEY, 'fixture-current')
+    expect(await first.credentials.resolve(KEY)).toEqual({ value: 'fixture-current', source: 'process' })
+    const disk = await readFile(path, 'utf8')
+    expect(disk).not.toContain('fixture-current')
+    expect(disk).not.toContain('DSH_CRED_TEST')
+    const next = await boot(config)
+    expect(await next.credentials.resolve(KEY)).toBeUndefined()
+    expect(await next.credentials.resolve(OTHER)).toEqual({ value: 'keep', source: 'file' })
+  })
+
   it('serves file entries alongside comments and quoted values', async () => {
     const dir = await tempDir()
     const path = join(dir, '.credentials.yaml')

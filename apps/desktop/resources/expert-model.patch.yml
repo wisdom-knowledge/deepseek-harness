@@ -1,4 +1,7 @@
 # The desktop Host applies this overlay after the user's profile patches.
+- id: credentials
+  config:
+    processOnlyRefs: [TRUE_SOTA_API_KEY]
 - id: agent-default-model
   config:
     provider: true-sota
@@ -10,7 +13,7 @@
         displayName: TrueSOTA
         apiKeyEnv: TRUE_SOTA_API_KEY
         api: openai-responses
-        baseURL: https://true-sota.com/v1
+        baseURL: !!js process.env.DSH_EXPERT_MODEL_BASE_URL
         models:
           - id: gpt-6.1-sol
 - id: llm-deepseek

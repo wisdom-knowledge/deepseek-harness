@@ -18,6 +18,8 @@ export interface WelcomeState {
 export interface DesktopWelcomeBackend {
   /** @param apiKey - Packaged expert model credential. @returns after the Host stores the credential for its fixed route. */
   provisionExpertModel(apiKey: string): Promise<void>
+  /** Remove the previous launch credential, including a legacy file-backed value. */
+  clearExpertModel(): Promise<void>
   /** @returns the current Host policy; every read observes live configuration. */
   analyticsEnabled(): Promise<boolean>
   readonly account: DesktopAccountBackend
@@ -136,6 +138,9 @@ export function connectDesktopWelcome(
     read,
     async provisionExpertModel(apiKey) {
       await invoke({ namespace: 'credentials', method: 'set', args: { ref: 'TRUE_SOTA_API_KEY', value: apiKey } })
+    },
+    async clearExpertModel() {
+      await invoke({ namespace: 'credentials', method: 'unset', args: { ref: 'TRUE_SOTA_API_KEY' } })
     },
     async analyticsEnabled() {
       const enabled = await invoke({ namespace: 'productAnalytics', method: 'enabled', args: {} }, AbortSignal.timeout(1000))

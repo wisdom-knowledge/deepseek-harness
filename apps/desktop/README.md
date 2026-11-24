@@ -217,7 +217,7 @@ Dependency installation does not run the locked Electron package's separate bina
 
 ### Startup onboarding
 
-Setting `DSH_EXPERT_MODEL_FILE` to an absolute path to a private JSON file with an `apiKey` enables the local expert edition when launching from source or packaging. The packaged application reads the file from its own resources, provisions the TrueSOTA model in a separate Harness home and uses the company logo and light appearance. At launch, enter the question UUID and your numeric Meetchances ID. The Desktop main process checks that the question exists, is bound to that ID, belongs to project 229 and has an open status. A failed check keeps the form open for correction or retry. The installation bundle contains the API key and should be distributed only to its intended testers.
+Set `DSH_EXPERT_EDITION=1` for expert builds and `DSH_EXPERT_CLOUD_ORIGIN` to their HTTPS gateway origin. At launch the expert Host clears the legacy model credential. After the authenticated gateway verifies the question UUID, expert ID, project 229 and question status, the App configures the returned key for this process. A failed check or allocation keeps the confirmation form open. The installer includes the expert profile and skills without a model key.
 
 Run `pnpm run test:expert-gate` at the repository root to check the launch form, eligibility decisions, IPC admission and workspace creation. Pushes and pull requests to `expert-desktop` run the same suite. Expert packaging runs it before building and stops on failure. Successful admission tests use fixtures. Live acceptance requires an active project 229 question UUID and its bound expert ID.
 

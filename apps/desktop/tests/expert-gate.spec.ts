@@ -1,60 +1,37 @@
 import { describe, expect, it, vi } from 'vitest'
-import { validateExpertQuestion } from '../src/expert-gate.ts'
+import { requestExpertKey } from '../src/expert-gate.ts'
 
-const eligible = { uuid_valid: true, binding_valid: true, project_id: 229, status: 'CLAIMED' }
-describe('expert desktop question eligibility', () => {
-  it.each([
-    [{ uuid_valid: false, binding_valid: false, project_id: 230, status: 'REJECTED' }, 'uuid'],
-    [{ binding_valid: false, current_talent_id: null, project_id: 10 }, 'unassigned'],
-    [{ binding_valid: false, current_talent_id: 19, project_id: 230, status: 'APPROVED' }, 'binding'],
-    [{ project_id: 10, status: 'REJECTED' }, 'project'],
-    [{ status: 'REJECTED' }, 'rejected'],
-    [{ status: 'APPROVED' }, 'approved'],
-    [{ status: null }, 'response'],
-    [{ uuid_valid: undefined }, 'response'],
-    [{ binding_valid: undefined }, 'response'],
-    [{ project_id: undefined }, 'response'],
-    [{ status: undefined }, 'response'],
-    [{ status: 'UNKNOWN' }, 'response'],
-    [{ status: 'PENDING_REPAIR' }, null],
-    [{ status: 'PENDING_CLAIM' }, null],
-    [{ status: 'RELEASED' }, null],
-    [{ status: 'INIT' }, null],
-    [{ status: 'PENDING_AUDIT' }, null],
-    [{}, null],
-  ] as const)('returns the first applicable decision for %o', async (fields, issue) => {
-    const request = vi.fn(async () => Response.json({ code: 0, data: { ...eligible, ...fields } }))
-    expect(await validateExpertQuestion(' question ', '17', request)).toBe(issue)
-    expect(request).toHaveBeenCalledWith(expect.stringContaining('/binding/validate'), expect.objectContaining({
-      body: JSON.stringify({ uuid: 'question', talent_id: 17 }),
-    }))
+const origin = 'https://expert.example.test'
+describe('expert key admission', () => {
+  it.each(['uuid', 'binding', 'unassigned', 'project', 'rejected', 'approved', 'inventory', 'key_conflict'])(
+    'keeps %s decisions outside the workspace', async (reason) => {
+      const fetch = vi.fn(async () => Response.json({ allowed: false, reason }))
+      expect(await requestExpertKey(' question ', '17', origin, fetch)).toEqual({ issue: reason })
+      expect(fetch).toHaveBeenCalledWith(new URL(origin + '/v1/questions/claim-key'), expect.objectContaining({
+        body: JSON.stringify({ uuid: 'question', talent_id: 17 }), redirect: 'error', cache: 'no-store',
+      }))
+    },
+  )
+  it('reads the current assignment on every submission', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(Response.json({ allowed: true, api_key: 'fixture-a' }))
+      .mockResolvedValueOnce(Response.json({ allowed: true, api_key: 'fixture-b' }))
+    expect(await requestExpertKey('question', '4', origin, fetch)).toEqual({ apiKey: 'fixture-a' })
+    expect(await requestExpertKey('question', '4', origin, fetch)).toEqual({ apiKey: 'fixture-b' })
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
-
-  it('keeps invalid inputs and unavailable results outside the workspace', async () => {
+  it('blocks local input errors, incomplete responses and unavailable services', async () => {
     const offline = vi.fn(async () => { throw new Error('offline') })
     for (const talent of ['', '0', '-1', '4.5', 'abc', '9007199254740992']) {
-      expect(await validateExpertQuestion('question', talent, offline)).toBe('talent')
+      expect(await requestExpertKey('question', talent, origin, offline)).toEqual({ issue: 'talent' })
     }
-    expect(await validateExpertQuestion(' ', '17', offline)).toBe('uuid')
+    expect(await requestExpertKey(' ', '17', origin, offline)).toEqual({ issue: 'uuid' })
+    expect(await requestExpertKey('question', '17', undefined, offline)).toEqual({ issue: 'network' })
     expect(offline).not.toHaveBeenCalled()
-    expect(await validateExpertQuestion('question', '17', offline)).toBe('network')
-    expect(await validateExpertQuestion('question', '17', async () => Response.json({ code: 1 }))).toBe('response')
-    expect(await validateExpertQuestion('question', '17', async () => new Response('unavailable', { status: 503 }))).toBe('network')
-    expect(await validateExpertQuestion('question', '17', async () => new Response('invalid json'))).toBe('response')
-  })
-
-  it('reports the request deadline as unavailable', async () => {
-    const deadline = new AbortController()
-    const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(deadline.signal)
-    try {
-      const result = validateExpertQuestion('question', '17', async (_url, options) => {
-        return new Promise<Response>((_resolve, reject) => {
-          options!.signal!.addEventListener('abort', () => reject(deadline.signal.reason), { once: true })
-        })
-      })
-      expect(timeout).toHaveBeenCalledWith(12_000)
-      deadline.abort()
-      expect(await result).toBe('network')
-    } finally { timeout.mockRestore() }
+    expect(await requestExpertKey('question', '17', origin, offline)).toEqual({ issue: 'network' })
+    for (const response of [Response.json({ allowed: true }), Response.json({ allowed: true, api_key: '  ' }), new Response('bad')]) {
+      expect(await requestExpertKey('question', '17', origin, async () => response)).toEqual({ issue: 'response' })
+    }
+    expect(await requestExpertKey('question', '17', origin, async () => new Response(null, { status: 403 }))).toEqual({ issue: 'identity' })
+    expect(await requestExpertKey('question', '17', origin, async () => new Response(null, { status: 503 }))).toEqual({ issue: 'network' })
   })
 })

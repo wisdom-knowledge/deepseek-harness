@@ -478,7 +478,7 @@ export async function packageTarget(
         { cwd: APP_ROOT, env: electronBuilderEnv, timeoutMs: 60_000 })
     })
   }
-  if (environment.DSH_EXPERT_MODEL_FILE !== undefined) {
+  if (environment.DSH_EXPERT_EDITION === '1' || environment.DSH_EXPERT_MODEL_FILE !== undefined) {
     await execute(['run', 'test:expert-gate'], buildEnv, REPOSITORY_ROOT)
   }
   await execute(invocation.unsigned ? ['run', 'build', '--profile', 'local'] : ['run', 'build:official'], buildEnv, REPOSITORY_ROOT)

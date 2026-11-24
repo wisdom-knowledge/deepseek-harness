@@ -68,6 +68,8 @@ A key you save is usable by the next request that names it, and `describe` repor
 
 ### Where keys come from
 
+References listed in `processOnlyRefs` resolve only from the current provider instance. Setting one keeps its value in memory. Unsetting it also removes a legacy file entry. These references ignore inherited environment variables and dotenv files.
+
 Keys are resolved in one fixed order — the first place that has a value wins:
 
 | Place | Writable? | Wins over |

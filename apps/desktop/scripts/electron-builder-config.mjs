@@ -59,8 +59,8 @@ export function createElectronBuilderConfig(
     throw new Error('desktop package: DSH_DESKTOP_UNSIGNED must be 0 or 1')
   }
   const unsigned = env.DSH_DESKTOP_UNSIGNED === '1'
-  const expertModelFile = env.DSH_EXPERT_MODEL_FILE
-  const expertSkillsDir = expertModelFile === undefined ? undefined
+  const expertEdition = env.DSH_EXPERT_EDITION === '1' || env.DSH_EXPERT_MODEL_FILE !== undefined
+  const expertSkillsDir = !expertEdition ? undefined
     : env.DSH_EXPERT_SKILLS_DIR ?? fileURLToPath(new URL('../resources/expert-skills', import.meta.url))
   if (expertSkillsDir !== undefined) {
     for (const name of ['ale-task-interviewer', 'ale-reference-interviewer']) {
@@ -70,7 +70,7 @@ export function createElectronBuilderConfig(
       }
     }
   }
-  const expertIcon = expertModelFile === undefined ? undefined : fileURLToPath(new URL('../resources/icon-expert.png', import.meta.url))
+  const expertIcon = !expertEdition ? undefined : fileURLToPath(new URL('../resources/icon-expert.png', import.meta.url))
   const windowsIcon = expertIcon ?? fileURLToPath(new URL('../resources/icon-windows.png', import.meta.url))
   const windowsTrayIcon = fileURLToPath(new URL(expertIcon === undefined
     ? '../resources/tray-windows.ico' : '../resources/tray-expert-windows.ico', import.meta.url))
@@ -126,6 +126,7 @@ export function createElectronBuilderConfig(
     protocols: [{ name: 'DeepSeek Harness', schemes: ['dsh'] }],
     extraMetadata: {
       dshDesktopAppId: appId,
+      ...(expertEdition ? { expertCloudOrigin: env.DSH_EXPERT_CLOUD_ORIGIN } : {}),
       dshDesktopUpdateChannel: update?.channel ?? 'nightly',
       ...(policy === undefined ? {} : { dshMandatoryUpdatePolicy: policy }),
       ...buildVersion === productVersion ? {} : { version: buildVersion },
@@ -174,8 +175,7 @@ export function createElectronBuilderConfig(
     asarUnpack: unpack,
     extraResources: [
       { from: buildPaths.runtime, to: 'runtime' },
-      ...(expertModelFile === undefined ? [] : [
-        { from: expertModelFile, to: 'expert-model.json' },
+      ...(!expertEdition ? [] : [
         { from: fileURLToPath(new URL('../resources/expert-model.patch.yml', import.meta.url)), to: 'expert-model.patch.yml' },
       ]),
       ...(expertSkillsDir === undefined ? [] : [{ from: expertSkillsDir, to: 'expert-skills' }]),
@@ -188,7 +188,7 @@ export function createElectronBuilderConfig(
       category: 'public.app-category.developer-tools',
       // macOS matches the application locale against this bundle, not Electron Framework resources.
       extendInfo: {
-        ...(expertModelFile === undefined ? {} : { CFBundleDisplayName: '智能知识出题助手' }),
+        ...(expertEdition ? { CFBundleDisplayName: '智能知识出题助手' } : {}),
         CFBundleLocalizations: ['en', 'zh_CN', 'ja', 'es', 'fr', 'de', 'ru', 'pt'],
         NSMicrophoneUsageDescription: 'DeepSeek Harness uses your microphone to transcribe speech into message drafts.',
       },

@@ -23,7 +23,7 @@ export const EXPERT_DESKTOP_NAME = '智能知识出题助手'
 
 /** First failed launch check. Null permits entry into the expert workspace. */
 export type ExpertGateIssue = 'uuid' | 'talent' | 'unassigned' | 'binding' | 'project'
-  | 'rejected' | 'approved' | 'network' | 'response' | 'workspace'
+  | 'rejected' | 'approved' | 'network' | 'response' | 'workspace' | 'inventory' | 'key_conflict' | 'identity'
 
 /** Credential writes return a safe outcome without exposing Host diagnostics. */
 export type WelcomeSaveResult = { readonly ok: true } | { readonly ok: false }

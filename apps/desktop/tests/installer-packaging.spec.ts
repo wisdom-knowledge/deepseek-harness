@@ -32,6 +32,7 @@ describe('installer preparation preserves application dependencies', () => {
     }, platform, 'x64')
     const icon = readFileSync(new URL('../resources/icon-expert.png', import.meta.url))
     const skills = config.extraResources.find(resource => resource.to === 'expert-skills')
+    expect(config.extraResources.some(resource => resource.to === 'expert-model.json' || resource.from === 'test-expert-model.json')).toBe(false)
     expect(config.extraResources.find(resource => resource.to === 'expert-model.patch.yml')?.from)
       .toBe(fileURLToPath(new URL('../resources/expert-model.patch.yml', import.meta.url)))
     expect(skills?.from).toBe(fileURLToPath(new URL('../resources/expert-skills', import.meta.url)))

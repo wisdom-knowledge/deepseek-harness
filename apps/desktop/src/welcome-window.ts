@@ -3,9 +3,9 @@ import type { SignInAttemptId } from '@deepseek-ai/dsh-deepseek-account/types'
 
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { app, BrowserWindow, ipcMain, type BrowserWindowConstructorOptions, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, ipcMain, net, type BrowserWindowConstructorOptions, type IpcMainInvokeEvent } from 'electron'
 import type { DesktopLocale } from './locale.ts'
-import { validateExpertQuestion } from './expert-gate.ts'
+import { requestExpertKey } from './expert-gate.ts'
 import { EXPERT_DESKTOP_NAME, WELCOME_IPC, type WelcomeOperations } from './welcome-api.ts'
 
 /**
@@ -58,7 +58,8 @@ let disposeActiveHandlers: (() => void) | undefined
  * @returns the visible window; a failed load destroys it before rejecting.
  */
 export async function openWelcomeWindow(locale: DesktopLocale, operations: Omit<WelcomeOperations, 'confirmExpert'> & {
-  confirmExpert?: () => Promise<void>
+  expertCloudOrigin?: string | undefined
+  confirmExpert?: (apiKey: string) => Promise<void>
 }): Promise<BrowserWindow> {
   const options = welcomeWindowOptions(process.platform, locale)
   const confirmExpert = operations.confirmExpert
@@ -92,10 +93,11 @@ export async function openWelcomeWindow(locale: DesktopLocale, operations: Omit<
   }
   if (confirmExpert !== undefined) ipcMain.handle(WELCOME_IPC.expertConfirm, async (event, uuid: unknown, talentId: unknown) => {
     assertSender(event)
-    const issue = await validateExpertQuestion(uuid, talentId)
-    if (issue !== null) return issue
+    const admission = await requestExpertKey(uuid, talentId, operations.expertCloudOrigin,
+      (url, options) => net.fetch(url instanceof URL ? url.href : url, options))
+    if ('issue' in admission) return admission.issue
     assertSender(event)
-    await confirmExpert()
+    await confirmExpert(admission.apiKey)
     return null
   })
   ipcMain.handle(WELCOME_IPC.analyticsEnabled, (event) => {

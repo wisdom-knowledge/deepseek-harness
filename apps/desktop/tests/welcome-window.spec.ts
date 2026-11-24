@@ -9,6 +9,7 @@ const electron = vi.hoisted(() => ({
   handlers: new Map<string, (event: unknown, value?: unknown, attributes?: unknown) => Promise<unknown>>(),
 }))
 vi.mock('electron', () => ({
+  net: { fetch: (url: URL, init: RequestInit) => fetch(url, init) },
   app: { getAppPath: () => electron.root },
   BrowserWindow: vi.fn(function (options: unknown) { return electron.create(options) }),
   ipcMain: {
@@ -54,19 +55,18 @@ describe('desktop welcome window', () => {
     const window = createWindow()
     electron.create.mockReturnValue(window)
     const confirmExpert = vi.fn(async () => {})
-    const data = { uuid_valid: true, binding_valid: true, project_id: 229, status: 'CLAIMED' }
     const request = vi.fn()
-      .mockResolvedValueOnce(Response.json({ code: 0, data: { ...data, project_id: 230 } }))
-      .mockResolvedValueOnce(Response.json({ code: 0, data }))
+      .mockResolvedValueOnce(Response.json({ allowed: false, reason: 'project' }))
+      .mockResolvedValueOnce(Response.json({ allowed: true, api_key: 'fixture' }))
     vi.stubGlobal('fetch', request)
     try {
-      await openWelcomeWindow(resolveDesktopLocale('zh-CN'), { ...operations, confirmExpert })
+      await openWelcomeWindow(resolveDesktopLocale('zh-CN'), { ...operations, confirmExpert, expertCloudOrigin: 'https://expert.example.test' })
       const submit = electron.handlers.get(WELCOME_IPC.expertConfirm)!
       const sender = { sender: window.webContents, senderFrame: window.webContents.mainFrame }
       expect(await submit(sender, 'wrong-project', '4')).toBe('project')
       expect(confirmExpert).not.toHaveBeenCalled()
       expect(await submit(sender, 'fixture-project-229', '4')).toBeNull()
-      expect(confirmExpert).toHaveBeenCalledOnce()
+      expect(confirmExpert).toHaveBeenCalledExactlyOnceWith('fixture')
       expect(request).toHaveBeenCalledTimes(2)
     } finally { vi.unstubAllGlobals() }
   })

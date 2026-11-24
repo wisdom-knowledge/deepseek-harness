@@ -62,6 +62,8 @@ export const CREDENTIALS_FILENAME = '.credentials.yaml'
 
 /** Plugin config: file location and hot-reload behavior. */
 export interface Config {
+  /** References supplied for the lifetime of this provider, without disk or environment fallback. */
+  processOnlyRefs?: string[]
   /** Credentials document path; defaults to `.credentials.yaml` under the harness home. */
   path?: string
   /** Harness home used when `path` is omitted; defaults to `$DSH_HOME` or `~/.dsh`. */
@@ -530,6 +532,7 @@ function maskCredential(value: string): string {
 /** File-backed credentials provider (`$DSH_HOME/.credentials.yaml`). */
 export class LocalCredentialProvider extends CredentialProvider {
   static Config: z<Config> = z.object({
+    processOnlyRefs: z.array(z.string()),
     path: z.string(),
     dshHome: z.string(),
     watch: z.boolean().default(true),
@@ -537,6 +540,7 @@ export class LocalCredentialProvider extends CredentialProvider {
   })
 
   private readonly spec: ResolvedSpec
+  private readonly processValues = new Map<string, string>()
   /**
    * Raw text of the last read or persisted document; `undefined` while the
    * file is absent. Watcher events whose content equals this cache are no-ops,
@@ -636,6 +640,10 @@ export class LocalCredentialProvider extends CredentialProvider {
   }
 
   override resolve(ref: CredentialRef): Promise<ResolvedCredential | undefined> {
+    if (this.config.processOnlyRefs?.includes(ref)) {
+      const value = this.processValues.get(ref)
+      return Promise.resolve(value === undefined ? undefined : { value, source: 'process' })
+    }
     const stored = this.values.get(ref)
     if (stored !== undefined) return Promise.resolve({ value: stored, source: 'file' })
     const inherited = this.inherited(ref)
@@ -646,6 +654,11 @@ export class LocalCredentialProvider extends CredentialProvider {
   }
 
   override describe(ref: CredentialRef): Promise<CredentialInfo> {
+    if (this.config.processOnlyRefs?.includes(ref)) {
+      const value = this.processValues.get(ref)
+      return Promise.resolve(value === undefined ? { configured: false, writable: true }
+        : { configured: true, source: 'process', writable: true, masked: maskCredential(value) })
+    }
     const stored = this.values.get(ref)
     if (stored !== undefined) return Promise.resolve({ configured: true, source: 'file', writable: true, masked: maskCredential(stored) })
     // Every reference is writable: a set writes the managed file, which
@@ -660,10 +673,15 @@ export class LocalCredentialProvider extends CredentialProvider {
     if (value.length === 0) {
       throw new Error(`credentials-local: an empty value cannot be stored for "${ref}"; use unset`)
     }
-    await this.write(ref, value)
+    if (this.config.processOnlyRefs?.includes(ref)) {
+      this.processValues.set(ref, value)
+      this.notifyUpdated(ref)
+    } else await this.write(ref, value)
   }
 
   override async unset(ref: CredentialRef): Promise<void> {
+    if (this.processValues.delete(ref)) this.notifyUpdated(ref)
+    // Also remove any value persisted by an earlier release.
     await this.write(ref, undefined)
   }
 
