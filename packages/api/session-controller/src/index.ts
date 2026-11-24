@@ -83,6 +83,8 @@ declare module '@deepseek-ai/cordis' {
 export interface Config {
   /** Override platform desktop-opener detection. */
   readonly nativeOpen?: boolean
+  /** Bind active Sessions to the deployment default and reject interactive model selection. */
+  readonly lockModelSelection?: boolean
   /** Positive integral milliseconds of list work before yielding between complete rows. */
   readonly listWorkSliceMs?: number
 }
@@ -124,6 +126,7 @@ export class SessionController extends TypertRemoteService {
 
   static Config: z<Config, ResolvedConfig> = z.object({
     nativeOpen: z.boolean(),
+    lockModelSelection: z.boolean().default(false),
     listWorkSliceMs: z.natural().min(1).default(16),
   })
 
@@ -141,16 +144,18 @@ export class SessionController extends TypertRemoteService {
   private readonly revealPath: (path: string, signal: AbortSignal) => Promise<void>
   private readonly canOpenPath: () => boolean
   private readonly listWorkSliceMs: number
+  private readonly lockModelSelection: boolean
   private readonly promotions = new Set<Promise<void>>()
 
   /**
    * @param ctx - Host context containing the Session capability assembly.
-   * @param config - native-opener and list-scheduling deployment policy.
+   * @param config - native-opener, model-selection, and list-scheduling deployment policy.
    * @param internals - host integrations replaceable by direct unit tests.
    */
   constructor(ctx: Context, config: Config, internals: SessionControllerInternals = {}) {
     super(ctx, 'sessionController', { namespace: 'session' })
     this.listWorkSliceMs = SessionController.Config(config).listWorkSliceMs
+    this.lockModelSelection = config.lockModelSelection === true
     this.fileApplications = internals.fileApplications ?? nativeFileApplications
     this.openFileApplication = internals.openFileApplication ?? openNativeFileApplication
     this.openPath = internals.openPath ?? openNativeAssociatedPath
@@ -161,6 +166,15 @@ export class SessionController extends TypertRemoteService {
 
   protected async [Service.init](): Promise<void> {
     const ctx = this.ctx
+    if (this.lockModelSelection) {
+      const applyDefault = (agent: Agent): void => {
+        const fixed = ctx.agentDefaultModel.currentSelection()
+        const current = agent.model.current()
+        if (current?.provider !== fixed.provider || current.model !== fixed.model) agent.model.select(fixed)
+      }
+      ctx.on('agent/created', ({ agent }) => { applyDefault(agent) })
+      for (const agent of ctx.agents.list()) applyDefault(agent)
+    }
     ctx.typert.resources.register('session', { resolve: resolveSessionResource })
     this.agents = new ApiSessionAgentController(ctx)
     this.agents.initialize()
@@ -287,7 +301,9 @@ export class SessionController extends TypertRemoteService {
    * @returns the normalized selection installed for the Session, without waiting for default persistence.
    */
   @Remote('selectModel')
-  selectModel(request: SessionSelectModelRequest): Promise<SessionSelectModelValue> {
+  async selectModel(request: SessionSelectModelRequest): Promise<SessionSelectModelValue> {
+    if (this.lockModelSelection) throw new RemoteError('session/model-unavailable',
+      'This deployment fixes the session model.', { provider: request.provider, model: request.model })
     return this.commands.selectModel(request)
   }
 
@@ -297,6 +313,7 @@ export class SessionController extends TypertRemoteService {
    */
   @Remote
   async initializeDefaultModel(): Promise<void> {
+    if (this.lockModelSelection) return
     const provider = 'deepseek-account'
     if (await hasProviderApiKey(this.ctx)) return
     const catalog = await buildModelCatalog(this.ctx)

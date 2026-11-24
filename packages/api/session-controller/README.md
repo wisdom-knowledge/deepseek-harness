@@ -109,6 +109,7 @@ A successful `selectModel` response acknowledges the recorded Session selection 
 |---|---:|---|
 | `nativeOpen` | platform-detected | Whether Session workspace paths can be handed to a native desktop opener |
 | `listWorkSliceMs` | `16` | Positive integral list-work time slice in milliseconds; checks occur between complete rows |
+| `lockModelSelection` | `false` | Apply the deployment default model to active and resumed agents and reject session model switches |
 
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-api-session-controller) is the exhaustive source for accepted fields and their JSDoc.
 

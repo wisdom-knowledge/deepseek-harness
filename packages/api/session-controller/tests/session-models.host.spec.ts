@@ -475,6 +475,23 @@ describe('Web session model selection', () => {
     await ctx.fiber.dispose()
   })
 
+  it('continues previous selections on the locked default and refuses an available alternative', async () => {
+    const alternate = { provider: 'deepseek-official', model: 'deepseek-reasoner' }
+    const fixed = { provider: 'deepseek-official', model: 'deepseek-chat' }
+    const { ctx, agent, sessionId } = await harness(alternate)
+    onTestFinished(() => ctx.fiber.dispose())
+    const save = vi.fn(async () => {})
+    const remote = await createSessionTestController(ctx, {
+      defaultModelSelection: () => fixed, saveDefaultModelSelection: save, cwd: '/tmp', lockModelSelection: true,
+    })
+    expect(agent.model.current()).toEqual(fixed)
+    expect(agent.session.requestHeader()?.config).toEqual(alternate)
+    await expect(remote.selectModel({ sessionId, ...alternate })).rejects.toMatchObject({ code: 'session/model-unavailable' })
+    await remote.initializeDefaultModel()
+    expect(agent.model.current()).toEqual(fixed)
+    expect(save).not.toHaveBeenCalled()
+  })
+
   it('rejects unlisted models and records validated selections for the next step', async () => {
     const { ctx, agent, sessionId } = await harness()
     const remote = await createSessionTestRemote(ctx, { defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }), cwd: '/tmp' })

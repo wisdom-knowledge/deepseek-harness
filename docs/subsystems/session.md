@@ -915,7 +915,7 @@ resolveAgent(sessionId: SessionId): Promise<ApiSessionAgentResult>
  * @param request - Session identity and requested model selection.
  * @returns the normalized selection installed for the Session, without waiting for default persistence.
  */
-@Remote('selectModel') selectModel(request: SessionSelectModelRequest): Promise<SessionSelectModelValue>
+@Remote('selectModel') async selectModel(request: SessionSelectModelRequest): Promise<SessionSelectModelValue>
 
 /**
  * Select the first available account model after login when no provider API key is configured.

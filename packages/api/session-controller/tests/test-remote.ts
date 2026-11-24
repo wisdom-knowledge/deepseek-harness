@@ -108,6 +108,7 @@ export interface TestSessionRemoteDefaults {
   readonly revealPath?: (path: string, signal: AbortSignal) => Promise<void>
   readonly canOpenPath?: () => boolean
   readonly listWorkSliceMs?: number
+  readonly lockModelSelection?: boolean
 }
 
 const installed = new WeakMap<Context, SessionController>()
@@ -318,6 +319,7 @@ async function installControllers(
       {
         ...defaults.nativeOpen === undefined ? {} : { nativeOpen: defaults.nativeOpen },
         ...defaults.listWorkSliceMs === undefined ? {} : { listWorkSliceMs: defaults.listWorkSliceMs },
+        ...defaults.lockModelSelection === undefined ? {} : { lockModelSelection: defaults.lockModelSelection },
       },
       {
         ...defaults.openPath === undefined ? {} : { openPath: defaults.openPath },
