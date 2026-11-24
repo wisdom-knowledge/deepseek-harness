@@ -217,7 +217,7 @@ Dependency installation does not run the locked Electron package's separate bina
 
 ### Startup onboarding
 
-Set `DSH_EXPERT_EDITION=1` for expert builds and `DSH_EXPERT_CLOUD_ORIGIN` to their HTTPS gateway origin. At launch the expert Host clears the legacy model credential. After the authenticated gateway verifies the question UUID, expert ID, project 229 and question status, the App configures the returned key for this process. A failed check or allocation keeps the confirmation form open. The installer includes the expert profile and skills without a model key.
+Set `DSH_EXPERT_EDITION=1` for expert builds and `DSH_EXPERT_CLOUD_ORIGIN=https://sugv0ckfusvhup0cl30gn.apigateway-cn-beijing.volceapi.com` for the production gateway. At launch the expert Host clears the legacy model credential. Experts submit the question UUID and expert ID without signing in. The cloud function verifies the current assignment, project 229 and question status, confirms the supplier key allocation, and issues an hour-long conversation credential for this process. A failed check or allocation keeps the confirmation form open. The installer includes the expert profile and skills without a model key.
 
 Run `pnpm run test:expert-gate` at the repository root to check the launch form, eligibility decisions, IPC admission and workspace creation. Pushes and pull requests to `expert-desktop` run the same suite. Expert packaging runs it before building and stops on failure. Successful admission tests use fixtures. Live acceptance requires an active project 229 question UUID and its bound expert ID.
 

@@ -217,7 +217,7 @@ Web 侧的对应命令是 `pnpm run dev:web` 与 `pnpm run start:web`，见[开�
 
 ### 启动引导
 
-专家版启动和打包使用 `DSH_EXPERT_EDITION=1`，`DSH_EXPERT_CLOUD_ORIGIN` 指定 HTTPS 网关地址。每次启动先清除旧模型凭证。云函数核验网关身份、UUID、专家绑定、项目 229 和题目状态后，读取或分配该题的 Key。当前 Host 配置成功后才创建工作区。安装包仅携带专家配置与 Skill。
+专家版启动和打包使用 `DSH_EXPERT_EDITION=1`，生产网关配置为 `DSH_EXPERT_CLOUD_ORIGIN=https://sugv0ckfusvhup0cl30gn.apigateway-cn-beijing.volceapi.com`。每次启动先清除旧模型凭证。专家免登录提交 UUID 和千识 ID，云函数核验 UUID、专家绑定、项目 229 和题目状态后确认供应商 Key 分配。当前进程配好一小时有效的对话凭证后才创建工作区。安装包仅携带专家配置与 Skill。
 
 在仓库根目录运行 `pnpm run test:expert-gate` 验证启动表单、题目校验、IPC 放行和窗口创建。向 `expert-desktop` 推送或提交 PR 时，CI 自动执行同一套回归。专家版打包入口会在构建前执行，失败即中止。放行用例使用固定响应，真实放行验收需项目 229 的有效题目 UUID 和当前绑定的专家 ID。
 

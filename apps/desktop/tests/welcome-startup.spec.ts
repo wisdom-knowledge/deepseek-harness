@@ -229,6 +229,7 @@ it.each([false, true])('starts welcome onboarding without carrying update focus 
   vi.stubEnv('DSH_CLIENT_VERSION', '1.2.3')
   vi.stubEnv('DSH_DESKTOP_DEV_PROJECT_DIR', '/development-profile')
   vi.stubEnv('DSH_EXPERT_MODEL_FILE', undefined)
+  vi.stubEnv('DSH_EXPERT_EDITION', undefined)
   vi.stubEnv('DSH_DESKTOP_NODE_BINARY', '/runtime/node')
   vi.stubEnv('DSH_DESKTOP_PNPM_ENTRY', '/runtime/pnpm')
   vi.stubEnv('DSH_DESKTOP_DSH_DIR', '/runtime/dsh')
