@@ -925,6 +925,8 @@ export interface Config {
 ```ts config-catalog
 /** Plugin config: file location and hot-reload behavior. */
 export interface Config {
+  /** References supplied for the lifetime of this provider, without disk or environment fallback. */
+  processOnlyRefs?: string[]
   /** Credentials document path; defaults to `.credentials.yaml` under the harness home. */
   path?: string
   /** Harness home used when `path` is omitted; defaults to `$DSH_HOME` or `~/.dsh`. */
