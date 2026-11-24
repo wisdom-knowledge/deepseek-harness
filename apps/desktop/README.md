@@ -223,7 +223,7 @@ Expert conversations use TrueSOTA’s `gpt-6.1-sol`, including the next turn of 
 
 The sidebar feedback button opens the MeetChances desktop feedback form in Feishu with the available app version and device details prefilled.
 
-Set `DSH_EXPERT_SKILLS_DIR` to an absolute directory of skill bundles to include them with the expert edition. Place each skill’s `SKILL.md` and its companion files under its own immediate subdirectory. The expert Host discovers the bundled directory through the standard skill provider, and the packaged application loads it from its resources.
+The expert edition bundles `ale-task-interviewer` and `ale-reference-interviewer` from `resources/expert-skills/`. From source, the expert Host discovers that same directory through the standard skill provider. `DSH_EXPERT_SKILLS_DIR` optionally selects a different absolute source directory. That directory must contain both skills with their `SKILL.md` and companion files. Packaging stops if a required `SKILL.md` is missing or empty.
 
 The API-key input starts empty and uses `autocomplete="new-password"` to ask Chromium not to autofill saved login passwords.
 

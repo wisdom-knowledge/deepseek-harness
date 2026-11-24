@@ -1,6 +1,9 @@
 import { readInstallerLocales } from '../scripts/installer-locales.mjs'
 import { tmpdir } from 'node:os'
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { fileURLToPath } from 'node:url'
 import { Arch, Platform } from 'electron-builder'
 import { AppInfo, Packager } from 'app-builder-lib'
 import { expandMacro } from 'app-builder-lib/out/util/macroExpander.js'
@@ -18,6 +21,34 @@ vi.mock('node:fs/promises', async importOriginal => ({
 }))
 
 describe('installer preparation preserves application dependencies', () => {
+  it.each(['win32', 'darwin'] as const)('bundles the repo skills in expert packages on %s', async (platform) => {
+    const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
+    const config = createElectronBuilderConfig({
+      DSH_DESKTOP_APP_ID: 'com.meetchances.expert-assistant',
+      DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.com',
+      DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: JSON.stringify({ allowedAuthOrigins: ['https://login.example.com'] }),
+      DSH_DESKTOP_UNSIGNED: '1',
+      DSH_EXPERT_MODEL_FILE: 'test-expert-model.json',
+    }, platform, 'x64')
+    const skills = config.extraResources.find(resource => resource.to === 'expert-skills')
+    expect(config.extraResources.find(resource => resource.to === 'expert-model.patch.yml')?.from)
+      .toBe(fileURLToPath(new URL('../resources/expert-model.patch.yml', import.meta.url)))
+    expect(skills?.from).toBe(fileURLToPath(new URL('../resources/expert-skills', import.meta.url)))
+    for (const name of ['ale-task-interviewer', 'ale-reference-interviewer']) {
+      expect(readFileSync(join(skills!.from, name, 'SKILL.md'), 'utf8')).toContain(`name: ${name}`)
+    }
+  })
+
+  it('rejects expert builds with missing skill sources', async () => {
+    const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
+    expect(() => createElectronBuilderConfig({
+      DSH_DESKTOP_APP_ID: 'com.meetchances.expert-assistant',
+      DSH_DESKTOP_UNSIGNED: '1',
+      DSH_EXPERT_MODEL_FILE: 'test-expert-model.json',
+      DSH_EXPERT_SKILLS_DIR: join(tmpdir(), `missing-expert-skills-${randomUUID()}`),
+    }, 'darwin', 'arm64')).toThrow(/required expert skill ale-task-interviewer is missing/u)
+  })
+
   it.each(['win32', 'darwin'] as const)('rejects a missing production policy before signing on %s', async (platform) => {
     const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
     expect(() => createElectronBuilderConfig({ DSH_DESKTOP_APP_ID: 'com.example.installer',
@@ -44,6 +75,8 @@ describe('installer preparation preserves application dependencies', () => {
     try {
       const { createElectronBuilderConfig } = await import('../electron-builder.config.mjs')
       const config = createElectronBuilderConfig(env, platform, 'x64')
+      expect(config.extraResources.some(resource => resource.to === 'expert-skills')).toBe(false)
+      expect(config.extraResources.some(resource => resource.to === 'expert-model.patch.yml')).toBe(false)
       const metadataPackager = new Packager({ projectDir: tmpdir() })
       const metadata: unknown = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
       Object.defineProperties(metadataPackager, {

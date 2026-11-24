@@ -223,7 +223,7 @@ Web 侧的对应命令是 `pnpm run dev:web` 与 `pnpm run start:web`，见[开�
 
 专家版侧栏的反馈按钮打开一面千识的飞书桌面端反馈问卷，自动预填可获取的应用版本和设备信息。
 
-将 `DSH_EXPERT_SKILLS_DIR` 设为 skill bundle 根目录的绝对路径，可将其中的 Skill 随专家版一起提供。每个 Skill 的 `SKILL.md` 和随附文件放在各自的直属子目录中。专家版 Host 使用标准 Skill 提供方发现该目录，打包应用从自身资源加载。
+专家版从 `resources/expert-skills/` 内置 `ale-task-interviewer` 和 `ale-reference-interviewer`。从源码启动时，专家版 Host 通过标准 Skill 提供方读取同一目录。也可以用 `DSH_EXPERT_SKILLS_DIR` 指定其他源码目录的绝对路径，该目录需要包含两份 Skill 的 `SKILL.md` 和随附文件。打包遇到缺失或为空的必需 `SKILL.md` 时会报错退出。
 
 API Key 输入框初始为空，并通过 `autocomplete="new-password"` 请求 Chromium 不要自动填入已保存的登录密码。
 

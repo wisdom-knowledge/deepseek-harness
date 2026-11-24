@@ -1,7 +1,7 @@
 import { readInstallerLocales, renderInstallerStrings } from './installer-locales.mjs'
 import { officePackageDirectories } from '../../../scripts/libreoffice-packages.mjs'
 import { X509Certificate } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -60,7 +60,16 @@ export function createElectronBuilderConfig(
   }
   const unsigned = env.DSH_DESKTOP_UNSIGNED === '1'
   const expertModelFile = env.DSH_EXPERT_MODEL_FILE
-  const expertSkillsDir = expertModelFile === undefined ? undefined : env.DSH_EXPERT_SKILLS_DIR
+  const expertSkillsDir = expertModelFile === undefined ? undefined
+    : env.DSH_EXPERT_SKILLS_DIR ?? fileURLToPath(new URL('../resources/expert-skills', import.meta.url))
+  if (expertSkillsDir !== undefined) {
+    for (const name of ['ale-task-interviewer', 'ale-reference-interviewer']) {
+      const skill = statSync(join(expertSkillsDir, name, 'SKILL.md'), { throwIfNoEntry: false })
+      if (!skill?.isFile() || skill.size === 0) {
+        throw new Error(`desktop package: required expert skill ${name} is missing or empty in ${expertSkillsDir}`)
+      }
+    }
+  }
   const skipNotarization = env.DSH_DESKTOP_MACOS_SKIP_NOTARIZATION === '1'
   if (env.DSH_DESKTOP_MACOS_SKIP_NOTARIZATION !== undefined && !['0', '1'].includes(env.DSH_DESKTOP_MACOS_SKIP_NOTARIZATION)) {
     throw new Error('desktop package: DSH_DESKTOP_MACOS_SKIP_NOTARIZATION must be 0 or 1')

@@ -413,7 +413,8 @@ async function main(): Promise<void> {
   const resources = runtimeResources()
   const expertHome = expertEdition ? join(app.getPath('userData'), 'harness') : undefined
   const expertSkillsDir = expertEdition
-    ? app.isPackaged ? join(process.resourcesPath, 'expert-skills') : process.env.DSH_EXPERT_SKILLS_DIR
+    ? app.isPackaged ? join(process.resourcesPath, 'expert-skills')
+      : process.env.DSH_EXPERT_SKILLS_DIR ?? join(app.getAppPath(), 'resources', 'expert-skills')
     : undefined
   const paths = resolveDesktopPaths(expertHome)
   const development = !app.isPackaged

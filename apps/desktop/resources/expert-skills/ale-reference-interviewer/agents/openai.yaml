@@ -1,0 +1,4 @@
+interface:
+  display_name: "ALE 从作品访谈出题"
+  short_description: "先读输入素材与参考作品，通过必要访谈形成完整题目，质量优先、不限轮数"
+  default_prompt: "使用 $ale-reference-interviewer，先查看我上传的input和reference，再通过必要访谈帮我整理一道符合生产要求的题目；质量优先，不限制轮数，避免无效提问；一句话任务描述由我选填。"

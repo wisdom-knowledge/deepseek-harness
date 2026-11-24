@@ -1,0 +1,4 @@
+interface:
+  display_name: "专家出题访谈"
+  short_description: "读取专家附件并逐步追问，将零散需求整理为有依据、可核验的专业任务草稿"
+  default_prompt: "使用 $ale-task-interviewer，根据我的想法和附件逐步追问，帮我整理一道专业任务；不要自行补造要求。"
