@@ -219,6 +219,8 @@ Web 侧的对应命令是 `pnpm run dev:web` 与 `pnpm run start:web`，见[开�
 
 从源码启动或打包时，可将 `DSH_EXPERT_MODEL_FILE` 设为含 `apiKey` 的私有 JSON 文件的绝对路径，以启用本地专家版。打包应用从自身资源读取该文件，在独立的 Harness home 配置 TrueSOTA 模型，使用公司标志和浅色外观，每次启动都要求输入非空 UUID。UUID 仅在本地接收，暂不校验身份。安装包内含 API Key，分发范围应限于本次验收人员。
 
+专家版会话固定使用 TrueSOTA 的 `gpt-6.1-sol`。继续旧会话时，从下一轮起使用该模型。专家版隐藏输入框的模型选择器、`/model` 命令和模型设置页，Host 会拒绝切换模型的请求。
+
 专家版侧栏的反馈按钮打开一面千识的飞书桌面端反馈问卷，自动预填可获取的应用版本和设备信息。
 
 将 `DSH_EXPERT_SKILLS_DIR` 设为 skill bundle 根目录的绝对路径，可将其中的 Skill 随专家版一起提供。每个 Skill 的 `SKILL.md` 和随附文件放在各自的直属子目录中。专家版 Host 使用标准 Skill 提供方发现该目录，打包应用从自身资源加载。

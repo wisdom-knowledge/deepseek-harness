@@ -1,4 +1,33 @@
 # The desktop Host applies this overlay after the user's profile patches.
+- id: agent-default-model
+  config:
+    provider: true-sota
+    model: gpt-6.1-sol
+- id: llm-pi-ai
+  config:
+    providers:
+      true-sota:
+        displayName: TrueSOTA
+        apiKeyEnv: TRUE_SOTA_API_KEY
+        api: openai-responses
+        baseURL: https://true-sota.com/v1
+        models:
+          - id: gpt-6.1-sol
+- id: llm-deepseek
+  disabled: true
+- id: llm-deepseek-account
+  disabled: true
+- id: session-controller
+  config:
+    lockModelSelection: true
+- id: subagent-model-selection-settings
+  config:
+    enabled: false
+    allowedModels: []
+- id: ui-model-selection
+  disabled: true
+- id: ui-settings-models
+  disabled: true
 - id: ui-settings-account
   config:
     contactFormUrl: https://meetchances.feishu.cn/share/base/shrcnML7Au76GNQ8wUNJKfM94oc
