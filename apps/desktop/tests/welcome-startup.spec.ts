@@ -4,6 +4,9 @@ vi.mock('../src/web-document.ts', () => ({
 /** Welcome startup uses the Host before transitioning to the workspace. */
 
 import { afterEach, expect, it, vi } from 'vitest'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { BrowserWindowConstructorOptions } from 'electron'
 import type { DesktopLocale } from '../src/locale.ts'
 import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
@@ -39,6 +42,7 @@ const state = vi.hoisted(() => ({
   listeners: new Map<string, (...args: unknown[]) => void>(),
   contents: undefined as { mainFrame: { url: string } } | undefined,
   windowOptions: undefined as BrowserWindowConstructorOptions | undefined,
+  expertAppData: '',
   menu: vi.fn(),
   operations: undefined as WelcomeOperations | undefined,
   nativeTheme: { themeSource: 'system', shouldUseDarkColors: false, on: vi.fn(), removeListener: vi.fn() },
@@ -61,7 +65,9 @@ vi.mock('electron', () => ({
     getVersion: () => '1.0.0',
     setAboutPanelOptions: vi.fn(),
     getAppPath: () => '/development-app',
-    getPath: (name: string) => name === 'userData' ? '/desktop-user-data' : `/development-${name}`,
+    getPath: (name: string) => name === 'appData' && state.expertAppData ? state.expertAppData
+      : name === 'userData' ? '/desktop-user-data' : `/development-${name}`,
+    setName: vi.fn(), setPath: vi.fn(),
     setAppLogsPath: vi.fn(),
     getPreferredSystemLanguages: () => ['en-US'],
     on: (name: string, callback: (...args: unknown[]) => void) => { state.appListeners.set(name, callback) },
@@ -129,6 +135,7 @@ vi.mock('../src/host-process.ts', () => ({
 }))
 vi.mock('../src/welcome-backend.ts', () => ({
   connectDesktopWelcome: () => ({
+    provisionExpertModel: vi.fn(),
     analyticsEnabled: async () => false,
     readLocalePreference: async () => state.preference,
     read: async () => {
@@ -149,7 +156,7 @@ vi.mock('../src/welcome-backend.ts', () => ({
 }))
 vi.mock('node:fs/promises', async importOriginal => ({
   ...await importOriginal<typeof import('node:fs/promises')>(),
-  readFile: vi.fn(async () => '{}'),
+  readFile: vi.fn(async (path: string) => path === process.env.DSH_EXPERT_MODEL_FILE ? '{"apiKey":"fixture"}' : '{}'),
 }))
 vi.mock('../src/update-dialog.ts', () => ({ DesktopUpdateDialog: class {
   constructor(_preload: string, locale: () => DesktopLocale) { state.dialogLocale = locale }
@@ -178,6 +185,36 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+it('creates no expert workspace before confirmation, including during startup and reactivation', async () => {
+  vi.resetModules()
+  vi.clearAllMocks()
+  state.operations = undefined
+  state.windowOptions = undefined
+  state.expertAppData = mkdtempSync(join(tmpdir(), 'expert-startup-'))
+  vi.stubEnv('DSH_EXPERT_MODEL_FILE', import.meta.filename)
+  vi.stubEnv('DSH_DESKTOP_PRIMARY_RUNTIME_DIR', '/runtime/primary-runtime')
+  vi.stubEnv('DSH_CLIENT_VERSION', '1.2.3')
+  const reading = Promise.withResolvers<undefined>()
+  state.beforeRead.mockReturnValueOnce(reading.promise)
+  try {
+    await import('../src/main.ts')
+    await vi.waitFor(() => { expect(state.beforeRead).toHaveBeenCalled() })
+    state.appListeners.get('activate')!(undefined, false)
+    state.appListeners.get('second-instance')!()
+    reading.resolve(undefined)
+    await vi.waitFor(() => { expect(state.operations?.confirmExpert).toBeDefined() })
+    state.appListeners.get('open-url')!({ preventDefault: vi.fn() }, 'dsh://open')
+    await state.operations!.skip()
+    expect(state.windowOptions).toBeUndefined()
+    expect(state.loadWorkspace).not.toHaveBeenCalled()
+    expect(state.showWorkspace).not.toHaveBeenCalled()
+  } finally {
+    reading.resolve(undefined)
+    rmSync(state.expertAppData, { recursive: true, force: true })
+    state.expertAppData = ''
+  }
+})
+
 it.each([false, true])('starts welcome onboarding without carrying update focus into login or skip (Windows update=%s)', async (updated) => {
   vi.resetModules()
   vi.clearAllMocks()
@@ -190,6 +227,7 @@ it.each([false, true])('starts welcome onboarding without carrying update focus 
   vi.useFakeTimers()
   vi.stubEnv('DSH_CLIENT_VERSION', '1.2.3')
   vi.stubEnv('DSH_DESKTOP_DEV_PROJECT_DIR', '/development-profile')
+  vi.stubEnv('DSH_EXPERT_MODEL_FILE', undefined)
   vi.stubEnv('DSH_DESKTOP_NODE_BINARY', '/runtime/node')
   vi.stubEnv('DSH_DESKTOP_PNPM_ENTRY', '/runtime/pnpm')
   vi.stubEnv('DSH_DESKTOP_DSH_DIR', '/runtime/dsh')

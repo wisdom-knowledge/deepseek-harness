@@ -21,6 +21,10 @@ export const WELCOME_IPC = {
 /** Product title for the locally provisioned expert edition. */
 export const EXPERT_DESKTOP_NAME = '智能知识出题助手'
 
+/** First failed launch check. Null permits entry into the expert workspace. */
+export type ExpertGateIssue = 'uuid' | 'talent' | 'unassigned' | 'binding' | 'project'
+  | 'rejected' | 'approved' | 'network' | 'response' | 'workspace'
+
 /** Credential writes return a safe outcome without exposing Host diagnostics. */
 export type WelcomeSaveResult = { readonly ok: true } | { readonly ok: false }
 
@@ -31,8 +35,8 @@ type WelcomeEventName = 'auth_page_view' | 'auth_page_click' | 'api_key_save_cli
 
 /** Host-owned operations used by the welcome window. */
 export interface WelcomeOperations {
-  /** @param uuid - Expert identifier submitted for the current launch. @returns when the workspace opens. */
-  confirmExpert?(uuid: string): Promise<void>
+  /** @param uuid - Claimed question UUID. @param talentId - Expert's decimal ID. @returns the first failure, or null after opening. */
+  confirmExpert?(uuid: string, talentId: string): Promise<ExpertGateIssue | null>
   /** @param eventName - allowed welcome event. @param attributes - approved fields without credentials. */
   analytics?<K extends WelcomeEventName>(eventName: K, attributes: ProductEventMap[K]): Promise<void>
   /** @returns the Host's current effective collection policy. */

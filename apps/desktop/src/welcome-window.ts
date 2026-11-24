@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { app, BrowserWindow, ipcMain, type BrowserWindowConstructorOptions, type IpcMainInvokeEvent } from 'electron'
 import type { DesktopLocale } from './locale.ts'
+import { validateExpertQuestion } from './expert-gate.ts'
 import { EXPERT_DESKTOP_NAME, WELCOME_IPC, type WelcomeOperations } from './welcome-api.ts'
 
 /**
@@ -56,12 +57,16 @@ let disposeActiveHandlers: (() => void) | undefined
  * @param operations - credential write and this-launch-only skip actions.
  * @returns the visible window; a failed load destroys it before rejecting.
  */
-export async function openWelcomeWindow(locale: DesktopLocale, operations: WelcomeOperations): Promise<BrowserWindow> {
+export async function openWelcomeWindow(locale: DesktopLocale, operations: Omit<WelcomeOperations, 'confirmExpert'> & {
+  confirmExpert?: () => Promise<void>
+}): Promise<BrowserWindow> {
   const options = welcomeWindowOptions(process.platform, locale)
   const confirmExpert = operations.confirmExpert
   if (confirmExpert !== undefined) {
-    options.width = 460
-    options.height = 400
+    options.width = 500
+    options.height = 406
+    options.backgroundColor = '#ffffff'
+    delete options.vibrancy
     options.title = EXPERT_DESKTOP_NAME
     options.webPreferences?.additionalArguments?.push('--dsh-expert-desktop')
   }
@@ -85,10 +90,13 @@ export async function openWelcomeWindow(locale: DesktopLocale, operations: Welco
       throw new Error('desktop welcome: rejected action from an unowned frame')
     }
   }
-  if (confirmExpert !== undefined) ipcMain.handle(WELCOME_IPC.expertConfirm, async (event, uuid: unknown) => {
+  if (confirmExpert !== undefined) ipcMain.handle(WELCOME_IPC.expertConfirm, async (event, uuid: unknown, talentId: unknown) => {
     assertSender(event)
-    if (typeof uuid !== 'string' || uuid.trim() === '') throw new Error('desktop expert: enter a UUID')
-    await confirmExpert(uuid)
+    const issue = await validateExpertQuestion(uuid, talentId)
+    if (issue !== null) return issue
+    assertSender(event)
+    await confirmExpert()
+    return null
   })
   ipcMain.handle(WELCOME_IPC.analyticsEnabled, (event) => {
     assertSender(event)

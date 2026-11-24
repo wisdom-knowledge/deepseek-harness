@@ -1,22 +1,27 @@
 /** Desktop welcome presentation; account and credential operations stay in the preload. */
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives/src/Button.tsx'
+import { Input } from '@deepseek-ai/dsh-client-ui-primitives/src/Input.tsx'
 import { Toast } from '@deepseek-ai/dsh-client-ui-primitives/src/Toast.tsx'
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives/src/StateDot.tsx'
 import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
-import { EXPERT_DESKTOP_NAME, type WelcomeApi } from '../welcome-api.ts'
+import { EXPERT_DESKTOP_NAME, type ExpertGateIssue, type WelcomeApi } from '../welcome-api.ts'
+import { expertMessages as expert } from './expert-locale.ts'
 
 type Page = 'entry' | 'key' | 'account'
 
 /**
  * Collect the expert identifier for this launch before revealing the workspace.
  * @param props.confirm - Native confirmation callback.
- * @returns Local UUID form.
+ * @returns the question and claimant form.
  */
-export function ExpertWelcome({ confirm }: { confirm: (uuid: string) => Promise<void> }) {
+export function ExpertWelcome({ confirm }: { confirm: NonNullable<WelcomeApi['confirmExpert']> }) {
   const [uuid, setUuid] = useState('')
   const [busy, setBusy] = useState(false)
-  const [failed, setFailed] = useState(false)
+  const [talent, setTalent] = useState('')
+  const [issue, setIssue] = useState<ExpertGateIssue | null>(null)
+  const pending = useRef(false)
 
   useEffect(() => {
     document.documentElement.lang = 'zh-CN'
@@ -25,37 +30,46 @@ export function ExpertWelcome({ confirm }: { confirm: (uuid: string) => Promise<
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (busy || uuid.trim() === '') return
+    if (pending.current || !uuid.trim() || !talent.trim()) return
+    pending.current = true
     setBusy(true)
-    setFailed(false)
-    try { await confirm(uuid.trim()) }
-    catch {
-      setFailed(true)
+    setIssue(null)
+    try { setIssue(await confirm(uuid.trim(), talent.trim())) }
+    catch { setIssue('workspace') }
+    finally {
+      pending.current = false
       setBusy(false)
     }
   }
 
   return <>
     <div className="titlebar" aria-hidden="true" />
-    <main className="welcome expert-welcome" aria-labelledby="expert-heading">
-      <img className="expert-welcome-logo" src="assets/expert-company-logo.svg" alt="智能知识" width="148" height="34" />
-      <form id="expert-form" className="key-form" onSubmit={(event) => { void submit(event) }} aria-busy={busy}>
-        <header className="key-heading">
-          <h1 id="expert-heading">专家出题助手</h1>
-        </header>
-        <div className="key-field">
-          <label className="visually-hidden" htmlFor="expert-uuid">UUID</label>
-          <input autoFocus id="expert-uuid" type="text" autoComplete="off" spellCheck={false} required
-            placeholder="输入专家 UUID" value={uuid} disabled={busy}
-            onChange={(event) => { setUuid(event.target.value); setFailed(false) }} />
-          {failed && <p className="key-error" role="alert">暂时无法打开工作区，请重试。</p>}
+    <main className="expert-welcome" aria-labelledby="expert-heading">
+      <img className="expert-welcome-logo" src="assets/expert-company-logo.svg" alt={expert.brand} width="112" height="26" />
+      <form id="expert-form" onSubmit={(event) => { void submit(event) }} aria-busy={busy}>
+        <h1 id="expert-heading">{expert.heading}</h1>
+        <div className="expert-field">
+          <label htmlFor="expert-uuid">{expert.uuid}</label>
+          <Input autoFocus id="expert-uuid" type="text" autoComplete="off" spellCheck={false} required
+            placeholder={expert.uuidPlaceholder} value={uuid} disabled={busy}
+            aria-invalid={issue === 'uuid'} aria-describedby={issue ? 'expert-error' : undefined}
+            onChange={(event) => { setUuid(event.target.value); setIssue(null) }} />
         </div>
+        <div className="expert-field">
+          <label htmlFor="expert-talent">{expert.talent}</label>
+          <Input id="expert-talent" type="text" inputMode="numeric" autoComplete="off" spellCheck={false} required
+            placeholder={expert.talentPlaceholder} value={talent} disabled={busy}
+            aria-invalid={issue === 'talent'} aria-describedby={issue ? 'expert-error' : undefined}
+            onChange={(event) => { setTalent(event.target.value); setIssue(null) }} />
+        </div>
+        <footer className="expert-footer">
+          <p id="expert-error" role="alert">{issue && expert.issues[issue]}</p>
+          <Button variant="primary" type="submit" disabled={busy || !uuid.trim() || !talent.trim()}
+            icon={busy ? <StateDot state="ongoing" size={16} /> : undefined}>
+            {busy ? expert.busy : expert.submit}
+          </Button>
+        </footer>
       </form>
-      <div className="actions">
-        <button className="primary" type="submit" form="expert-form" disabled={busy || uuid.trim() === ''}>
-          {busy ? '正在打开' : '确认'}
-        </button>
-      </div>
     </main>
   </>
 }

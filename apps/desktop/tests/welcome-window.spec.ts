@@ -50,6 +50,26 @@ const operations = {
 }
 
 describe('desktop welcome window', () => {
+  it('enters the workspace only after a fresh successful expert confirmation', async () => {
+    const window = createWindow()
+    electron.create.mockReturnValue(window)
+    const confirmExpert = vi.fn(async () => {})
+    const data = { uuid_valid: true, binding_valid: true, project_id: 229, status: 'CLAIMED' }
+    const request = vi.fn()
+      .mockResolvedValueOnce(Response.json({ code: 0, data: { ...data, project_id: 230 } }))
+      .mockResolvedValueOnce(Response.json({ code: 0, data }))
+    vi.stubGlobal('fetch', request)
+    try {
+      await openWelcomeWindow(resolveDesktopLocale('zh-CN'), { ...operations, confirmExpert })
+      const submit = electron.handlers.get(WELCOME_IPC.expertConfirm)!
+      const sender = { sender: window.webContents, senderFrame: window.webContents.mainFrame }
+      expect(await submit(sender, 'wrong-project', '4')).toBe('project')
+      expect(confirmExpert).not.toHaveBeenCalled()
+      expect(await submit(sender, 'fixture-project-229', '4')).toBeNull()
+      expect(confirmExpert).toHaveBeenCalledOnce()
+      expect(request).toHaveBeenCalledTimes(2)
+    } finally { vi.unstubAllGlobals() }
+  })
   it.each(['darwin', 'win32', 'linux'] as const)('keeps the %s preview fixed-size and sandboxed', (platform) => {
     const options = welcomeWindowOptions(platform, resolveDesktopLocale('zh-CN'))
     expect(options).toMatchObject({

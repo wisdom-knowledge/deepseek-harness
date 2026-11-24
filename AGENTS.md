@@ -2,6 +2,8 @@
 
 DeepSeek Harness is an all-plugin Cordis agent harness. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
 
+**Feishu and Qianshi (千识) access.** Cloud functions are the only entry points for project clients and external callers accessing Feishu OpenAPI or Qianshi APIs. Keep upstream credentials in the cloud functions and Qianshi endpoints inaccessible to external callers. Disabling the functions must stop all new upstream requests through this integration, including retries. Never fall back to a direct API call.
+
 ## Pre-stable APIs and released Session data
 
 Public APIs are pre-stable; update every consumer. Follow [version/status](docs/session-format-status.md) and [type acknowledgements](docs/cookbook/reviewing-persistence-type-changes.md). [Adjacent migration](.agents/notes/implemented/architecture/2026-08-31-released-session-format-migrations.md) may add a version-named successor but never move, overwrite, or delete committed generations; predecessors imply neither fallback nor downgrade support. SQLite uses monotonic `SCHEMA_VERSION`.

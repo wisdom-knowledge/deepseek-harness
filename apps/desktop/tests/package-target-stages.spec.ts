@@ -45,6 +45,14 @@ function supervisor(failure?: string) {
   return { run, stages }
 }
 
+it('stops expert macOS packaging before the build if question gate regression fails', async () => {
+  const { run, stages } = supervisor('run test:expert-gate')
+  const invocation = parseDesktopPackageInvocation(['mac-arm64', '--unsigned'], 'darwin', 'arm64')
+  await expect(packageTarget(invocation, { ...environment, DSH_EXPERT_MODEL_FILE: 'fixture.json' }, run))
+    .rejects.toThrow('stage refused')
+  expect(stages).toEqual(['run test:expert-gate'])
+})
+
 it.each(['pack', 'runtime'] as const)('overlaps Windows preparation and waits for both before signing when %s finishes first', async (first) => {
   const { run, stages } = supervisor()
   const pack = Promise.withResolvers<undefined>()

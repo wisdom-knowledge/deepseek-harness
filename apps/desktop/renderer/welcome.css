@@ -1,7 +1,7 @@
 @import url('./assets/window-material.css');
 
 /* Figma 2121:39336 / 2138:44626, Platform modes. Native material supplies the blur. */
-body {
+body:has(.welcome) {
   color-scheme: light dark;
   --dsw-alias-label-primary: #0f1115;
   --dsw-alias-label-secondary: #61666b;
@@ -23,7 +23,7 @@ body {
 }
 
 @media (prefers-color-scheme: dark) {
-  body {
+  body:has(.welcome) {
     --dsw-alias-label-primary: #f9fafb;
     --dsw-alias-label-secondary: #cfd3d6;
     --dsw-alias-label-tertiary: #adb2b8;
@@ -103,8 +103,11 @@ body {
 }
 
 .expert-welcome {
-  grid-template-rows: 34px minmax(0, 1fr) 48px;
-  padding: 24px 36px 42px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 24px 24px;
+  font: var(--dsw-font-s-14);
 }
 
 .expert-welcome-logo {
@@ -112,8 +115,38 @@ body {
   object-fit: contain;
 }
 
-.expert-welcome .key-form {
-  width: min(100%, 320px);
+.expert-welcome form {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+#expert-heading {
+  margin: 0 0 4px;
+  font: var(--dsw-font-l-20);
+}
+
+.expert-field {
+  display: grid;
+  gap: 6px;
+}
+
+.expert-field label {
+  font: var(--dsw-font-xs-strong-13);
+}
+
+.expert-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+#expert-error {
+  margin: 0;
+  color: var(--dsw-alias-state-error-primary);
+  font: var(--dsw-font-xs-13);
 }
 
 .tagline {

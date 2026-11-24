@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { Welcome } from '../src/client/WelcomePage.tsx'
+import { ExpertWelcome, Welcome } from '../src/client/WelcomePage.tsx'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { resolveDesktopLocale } from '../src/locale.ts'
 import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
@@ -48,6 +48,31 @@ function mount(language = 'zh-CN', takeNotice = vi.fn<() => Promise<WelcomeNotic
 }
 
 describe('desktop welcome presentation', () => {
+  it('keeps incomplete expert forms idle and sends one request while confirmation is pending', async () => {
+    const pending = Promise.withResolvers<'project'>()
+    const confirm = vi.fn(() => pending.promise)
+    const view = render(<ExpertWelcome confirm={confirm} />)
+    const uuid = screen.getByLabelText('题目 UUID')
+    const talent = screen.getByLabelText('一面千识 ID')
+    const button = view.getByRole('button')
+    if (!(button instanceof HTMLButtonElement)) throw new Error('Expected expert confirmation button')
+    const form = button.form!
+    for (const [question, claimant] of [['', ''], ['', '4'], ['question', ''], ['  ', '4']]) {
+      fireEvent.change(uuid, { target: { value: question } })
+      fireEvent.change(talent, { target: { value: claimant } })
+      expect(button.disabled).toBe(true)
+      fireEvent.submit(form)
+      expect(confirm).not.toHaveBeenCalled()
+    }
+    fireEvent.change(uuid, { target: { value: 'question' } })
+    fireEvent.submit(form)
+    fireEvent.submit(form)
+    expect(confirm).toHaveBeenCalledExactlyOnceWith('question', '4')
+    expect(button.disabled).toBe(true)
+    await act(async () => pending.resolve('project'))
+    expect(screen.getByRole('alert').textContent).toContain('这道题属于其他项目')
+    expect(button.disabled).toBe(false)
+  })
   it.each(['zh-CN', 'en'])('renders the %s entry and API-key step', async (language) => {
     const view = mount(language)
     expect(view.document.documentElement.lang).toBe(language)

@@ -59,6 +59,7 @@
     "lint:fix:contracts-ready": "tsx scripts/run-oxlint.ts --config .oxlintrc.staged.json packages/typert/generator/tests/fixtures/type-model --fix && tsx scripts/run-oxlint.ts . --fix",
     "duplication": "jscpd --config .jscpd.json packages scripts",
     "test": "pnpm run build:native-system && vitest run",
+    "test:expert-gate": "vitest run apps/desktop/tests/expert-gate.spec.ts apps/desktop/tests/welcome-window.spec.ts apps/desktop/tests/welcome-renderer.client.spec.tsx apps/desktop/tests/welcome-startup.spec.ts",
     "test:coverage": "pnpm run build:native-system && vitest run --coverage",
     "build:native-system": "tsx native/system/scripts/build.ts --host-addon-only",
     "test:coverage:partitioned": "tsx scripts/run-coverage-partitions.ts",

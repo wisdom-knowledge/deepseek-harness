@@ -1,0 +1,19 @@
+name: Expert desktop question gate
+on:
+  push:
+    branches: [expert-desktop]
+  pull_request:
+    branches: [expert-desktop]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v5
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:expert-gate

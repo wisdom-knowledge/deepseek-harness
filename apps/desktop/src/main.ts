@@ -847,6 +847,7 @@ async function main(): Promise<void> {
     if (url.hostname === 'shell') return serveWebDocument(request, join(app.getAppPath(),
       url.pathname === '/design-platform.css' ? 'lib/welcome' : 'renderer'))
     if (url.hostname === 'app') {
+      if (expertEdition && !expertConfirmed) return Promise.resolve(new Response(null, { status: 403 }))
       if (expertEdition && url.pathname === '/assets/expert-company-logo.svg') {
         return serveWebDocument(request, join(app.getAppPath(), 'renderer'))
       }
@@ -1458,6 +1459,7 @@ async function main(): Promise<void> {
           try { await enterWorkspace() }
           catch (error) {
             expertConfirmed = false
+            mainWindow?.destroy()
             throw error
           }
         } } : {}),
@@ -1535,6 +1537,10 @@ async function main(): Promise<void> {
     if (isMandatory()) { mandatoryUI?.focus(); return }
     const window = welcomeWindow ?? mainWindow
     if (window === undefined || window.isDestroyed()) {
+      if (expertEdition && !expertConfirmed) {
+        if (backend.state.phase === 'ready') void showWelcome().catch((error: unknown) => { reportFatal(error, 'main') })
+        return
+      }
       try { createMainWindow() } catch (error) { reportFatal(error, 'main'); return }
       void (backend.state.phase === 'ready' ? openInitialWindow() : navigateMain(applicationUrl)).catch((error: unknown) => { reportFatal(error, 'main') })
       return
@@ -1606,7 +1612,7 @@ async function main(): Promise<void> {
     }).catch((error: unknown) => { console.error(error); if (!quitting && !shellInstallerOwnsQuit) finishQuit() })
   })
 
-  mainWindow = createMainWindow()
+  if (!expertEdition) createMainWindow()
   if (typeof manifest !== 'object' || manifest === null) throw new Error('desktop policy: invalid application manifest')
   const developmentPolicy = app.isPackaged ? undefined : process.env.DSH_DESKTOP_MANDATORY_UPDATE_CONFIG
   const policyInput: unknown = app.isPackaged
