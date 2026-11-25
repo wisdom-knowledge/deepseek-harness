@@ -102,3 +102,15 @@ export function desktopBuildVersionPrefix(productVersion) {
   const [release] = product.version.split('-')
   return `${release}-${requiredFields(product).join('.')}.`
 }
+
+/**
+ * Number expert builds by UTC date and milliseconds elapsed since midnight.
+ * @param {string} productVersion - Desktop manifest version.
+ * @param {Date} started - Build start instant.
+ * @returns {string} SemVer-ordered internal build version.
+ */
+export function expertBuildVersion(productVersion, started) {
+  const date = started.toISOString().slice(0, 10).replaceAll('-', '')
+  const sequence = started.getTime() % 86_400_000 + 1
+  return `${desktopBuildVersionPrefix(productVersion)}${date}.${sequence}`
+}

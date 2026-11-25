@@ -5,12 +5,15 @@ import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { repositoryClientBuildEnvironment, resolveClientBuildEnvironment } from '../../scripts/client-build-environment.ts'
 import { packagedImportsPlugin } from './scripts/desktop-bundle-imports.mjs'
+import { readDesktopBuildCommit, resolveDesktopBuildCommit } from './scripts/desktop-build-commit.mjs'
+import { expertBuildVersion } from './scripts/desktop-build-version.mjs'
 
 // This config runs after the workspace tsdown pass, not inside it: the main bundle inlines
 // workspace devDependencies from their lib/ output, which the concurrent workspace pass does
 // not order ahead of this package (root package.json build:lib:host).
 const manifest = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
   dependencies: Record<string, string>
+  version: string
 }
 /** electron-builder ships the manifest `dependencies` next to the main bundle; Electron provides `electron` and Node. */
 const mainProcessImports = { packages: new Set(['electron', ...Object.keys(manifest.dependencies)]), nodeBuiltins: true }
@@ -31,6 +34,12 @@ if (clientVersion === undefined) throw new Error('desktop build: the client envi
 
 /** Inline the one public build value the Node entry reads; every other variable stays a runtime lookup. */
 const clientVersionDefine = { 'process.env.DSH_CLIENT_VERSION': JSON.stringify(clientVersion) }
+const builtAt = new Date(process.env.DSH_DESKTOP_BUILD_STARTED_AT ?? Date.now())
+const buildInfo = {
+  ...resolveDesktopBuildCommit(process.env) ?? readDesktopBuildCommit(REPOSITORY_ROOT),
+  builtAt: builtAt.toISOString(),
+  developmentVersion: expertBuildVersion(manifest.version, builtAt),
+}
 
 export default defineConfig([
   {
@@ -56,7 +65,7 @@ export default defineConfig([
   {
     entry: ['lib/types/main.js'],
     plugins: [packagedImportsPlugin(mainProcessImports)],
-    define: clientVersionDefine,
+    define: { ...clientVersionDefine, __DSH_DESKTOP_BUILD__: JSON.stringify(buildInfo) },
     onSuccess: async () => {
       await build({
         configFile: false,

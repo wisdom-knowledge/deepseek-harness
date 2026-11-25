@@ -23,3 +23,6 @@ export function resolveDesktopBuildVersion(env: NodeJS.ProcessEnv, productVersio
  * @returns The prefix shared by every build version of that product version.
  */
 export function desktopBuildVersionPrefix(productVersion: string): string
+
+/** Number an expert build using its product version and UTC start instant. */
+export function expertBuildVersion(productVersion: string, started: Date): string

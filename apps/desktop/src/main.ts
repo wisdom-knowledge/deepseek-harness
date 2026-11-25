@@ -108,6 +108,25 @@ app.setAppLogsPath()
 function currentDesktopLocale(): ReturnType<typeof resolveDesktopLocale> {
   return resolveDesktopLocale(windowsLanguage ?? app.getLocale())
 }
+
+/** Captured in the Electron main bundle so reopening the app preserves its build identity. */
+declare const __DSH_DESKTOP_BUILD__: { builtAt: string; commit: string; dirty: boolean; developmentVersion: string }
+const desktopBuild = typeof __DSH_DESKTOP_BUILD__ === 'undefined' ? undefined : __DSH_DESKTOP_BUILD__
+
+function displayedVersion(): string {
+  return expertEdition && !app.isPackaged && desktopBuild ? desktopBuild.developmentVersion : app.getVersion()
+}
+
+function buildDetails(): string | undefined {
+  if (!expertEdition || !desktopBuild) return undefined
+  const { id, messages } = currentDesktopLocale()
+  const time = new Intl.DateTimeFormat(id, {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hourCycle: 'h23', timeZoneName: 'shortOffset',
+  }).format(new Date(desktopBuild.builtAt))
+  return formatDesktopMessage(messages.aboutBuild, { time, commit: desktopBuild.commit.slice(0, 12) })
+    + (desktopBuild.dirty ? ` (${messages.aboutDirty})` : '')
+}
 /** Quit without the task confirmation; the caller has already decided the application must stop. */
 function quitWithoutConfirmation(): void {
   skipQuitConfirmation = true
@@ -298,7 +317,7 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     } : {}),
     webPreferences: {
       preload,
-      ...(primary && expertEdition ? { additionalArguments: [EXPERT_VERSION_ARGUMENT + app.getVersion()] } : {}),
+      ...(primary && expertEdition ? { additionalArguments: [EXPERT_VERSION_ARGUMENT + displayedVersion()] } : {}),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
@@ -505,7 +524,7 @@ async function main(): Promise<void> {
   // chrome and its content never mix languages.
   const showAbout = async (): Promise<void> => {
     await ordinaryMessageBox({ type: 'info', title: locale.messages.aboutMenu, message: locale.messages.aboutProduct,
-      detail: formatDesktopMessage(locale.messages.aboutVersion, { version: app.getVersion() }),
+      detail: [formatDesktopMessage(locale.messages.aboutVersion, { version: displayedVersion() }), buildDetails()].filter(Boolean).join('\n'),
       buttons: [locale.messages.updateAcknowledge], cancelId: 0 })
   }
   const commandManager = new DesktopCommandManager({
@@ -1209,9 +1228,11 @@ async function main(): Promise<void> {
 
   const applicationIconPath = development ? join(app.getAppPath(), 'resources', expertEdition ? 'icon-expert.png' : 'icon-windows.png')
     : join(process.resourcesPath, 'icon.png')
+  const credits = buildDetails()
   app.setAboutPanelOptions({
     applicationName: 'DeepSeek Harness',
-    applicationVersion: app.getVersion(),
+    applicationVersion: displayedVersion(),
+    ...(credits === undefined ? {} : { credits }),
     // The release has no separate build number; omit Electron's bundle version.
     version: '',
     copyright: '',

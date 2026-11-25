@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DESKTOP_BUILD_VERSION_ENV,
   desktopBuildVersionPrefix,
+  expertBuildVersion,
   resolveDesktopBuildVersion,
   validateDesktopBuildVersion,
 } from '../scripts/desktop-build-version.mjs'
@@ -10,6 +11,13 @@ const PRERELEASE = '0.1.6-alpha.2'
 const STABLE = '0.1.6'
 
 describe('desktop build version', () => {
+  it('orders expert builds within a day and across UTC midnight', () => {
+    expect(['2026-11-25T23:59:59.998Z', '2026-11-25T23:59:59.999Z', '2026-11-26T00:00:00.000Z']
+      .map(time => expertBuildVersion(PRERELEASE, new Date(time)))).toEqual([
+      '0.1.6-alpha.2.20261125.86399999', '0.1.6-alpha.2.20261125.86400000', '0.1.6-alpha.2.20261126.1',
+    ])
+  })
+
   it('publishes the product version when no build version is present', () => {
     expect(resolveDesktopBuildVersion({}, PRERELEASE)).toBe(PRERELEASE)
     expect(resolveDesktopBuildVersion({ [DESKTOP_BUILD_VERSION_ENV]: '   ' }, PRERELEASE)).toBe(PRERELEASE)
