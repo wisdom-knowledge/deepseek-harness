@@ -4,6 +4,8 @@ DeepSeek Harness is an all-plugin Cordis agent harness. Read [docs/architecture.
 
 **千识与飞书接入。** 客户端及外部调用方统一走云函数，上游凭证仅存服务端，千识接口不对外暴露。停用云函数须阻断所有新请求及重试，禁止回退直连。
 
+**专家版 App 构建。** 用户要求「构建」专家版时，默认交付三个内部测试安装包。以公司仓库 `expert-desktop` 的目标提交为准，确认远端分支已指向该提交后立即执行 `gh workflow run windows.yml -R wisdom-knowledge/expert-desktop-builds`。同时从同一提交在本机启用专家版配置（见 [Desktop README](apps/desktop/README.zh.md)），依次执行 `pnpm run package:desktop:mac:arm64:unsigned` 和 `pnpm run package:desktop:mac:x64:unsigned`。Windows 构建成功后，核对 artifact 名中的源码 SHA，下载并解压 EXE。将两份 DMG 和这份 EXE 一起归档到当前仓库根目录的 `desktop-builds/<版本号>/`，并向用户交付该本地目录。Git 忽略整个归档目录。
+
 ## Pre-stable APIs and released Session data
 
 Public APIs are pre-stable; update every consumer. Follow [version/status](docs/session-format-status.md) and [type acknowledgements](docs/cookbook/reviewing-persistence-type-changes.md). [Adjacent migration](.agents/notes/implemented/architecture/2026-08-31-released-session-format-migrations.md) may add a version-named successor but never move, overwrite, or delete committed generations; predecessors imply neither fallback nor downgrade support. SQLite uses monotonic `SCHEMA_VERSION`.
