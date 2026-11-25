@@ -3,7 +3,7 @@
 // Session while a second page switches the official badge skill bundle; a
 // global skill seeded in the harness home stays listed throughout. No model
 // call is issued, so a stray stream fails loud on the open LLM seam.
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium, type Browser, type Locator, type Page } from 'playwright'
@@ -78,6 +78,22 @@ describe('web e2e: the slash menu follows plugin switches', () => {
     await toggle.click()
     await expect.poll(() => toggle.getAttribute('aria-checked'), { timeout: PLUGIN_TOGGLE_SETTLE_MS }).toBe(String(enabled))
   }
+
+  it('adds a newly published skill while the same slash menu stays open', async () => {
+    const menu = page.getByRole('listbox', { name: 'Trigger suggestions' })
+    await badgeListed()
+    const name = 'dsh-published-skill'
+    const option = menu.getByRole('option', { name: new RegExp(`^${name} `) })
+    expect(await option.count()).toBe(0)
+    const cache = join(scaffold.workspaceCwd, '.published-skills')
+    const root = `v01/${'a'.repeat(64)}`
+    const directory = join(cache, root, name)
+    await mkdir(directory, { recursive: true })
+    await writeFile(join(directory, 'SKILL.md'), `---\nname: ${name}\ndescription: Published after startup\n---\n`)
+    await writeFile(join(cache, 'next.json'), JSON.stringify([root]))
+    await rename(join(cache, 'next.json'), join(cache, 'active.json'))
+    await option.waitFor({ timeout: 10_000 })
+  })
 
   it('lists a switched bundle\'s skill only while the bundle is on, keeping the global skill', async () => {
     onTestFailed(async () => {

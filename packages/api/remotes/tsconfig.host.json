@@ -20,6 +20,7 @@
     {
       "path": "../../core/session"
     },
+    { "path": "../../skill/skill" },
     {
       "path": "../../credentials/credentials"
     },

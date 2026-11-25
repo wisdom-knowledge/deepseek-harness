@@ -543,6 +543,7 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     DSH_HOME: harnessHome,
     DSH_AGENTS_HOME: join(workspaceCwd, '.agents-home'),
     DSH_BUNDLED_SKILL_DIR: join(workspaceCwd, '.bundled-skills'),
+    DSH_PUBLISHED_SKILL_DIR: join(workspaceCwd, '.published-skills'),
   }
   const originalSkillRootEnvironment = Object.fromEntries(
     Object.keys(skillRootEnvironment).map(key => [key, process.env[key]]),

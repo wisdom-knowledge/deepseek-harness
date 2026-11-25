@@ -37,6 +37,7 @@
     {
       "path": "../../core/session"
     },
+    { "path": "../../skill/skill" },
     {
       "path": "../../extensions/cordis-host-runner"
     },
