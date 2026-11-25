@@ -18,6 +18,7 @@ import {
   type SessionLogExportReady,
 } from './archive.ts'
 import { formatSessionMarkdown } from './markdown.ts'
+import { installTrajectorySync, type TrajectoryConfig } from './trajectory.ts'
 import { SESSION_LOG_EXPORT_PATH, SESSION_MARKDOWN_EXPORT_PATH } from './routes.ts'
 
 export {
@@ -48,10 +49,15 @@ export { SESSION_LOG_EXPORT_PATH } from './routes.ts'
 export interface Config {
   /** DEFLATE level for each ZIP entry. @default 6 */
   readonly compressionLevel?: SessionLogCompressionLevel
+  readonly trajectory?: false | TrajectoryConfig
 }
 
 /** Validate Session-log archive configuration. */
 export const Config: Schema<Config> = Schema.object({
+  trajectory: Schema.union([Schema.const(false), Schema.object({
+    origin: Schema.string().required(), directory: Schema.string().required(),
+    retryMs: Schema.number().step(1).min(1000).default(30_000),
+  })]).default(false) as Schema<false | TrajectoryConfig>,
   compressionLevel: Schema.number().step(1).min(0).max(9)
     .default(DEFAULT_SESSION_LOG_COMPRESSION_LEVEL) as Schema<SessionLogCompressionLevel>,
 })
@@ -78,6 +84,10 @@ const REQUESTED: CommandResult = {
  * @param config - resolved compression policy.
  */
 export function apply(ctx: Context, config: Config = {}): void {
+  const trajectory = config.trajectory
+  if (trajectory) ctx.inject(['credentials', 'sessions', 'sessionPersistence'], (scope) => {
+    installTrajectorySync(scope, trajectory)
+  })
   ctx.effect(() => ctx.commands.register({
     definitionId: brandString<CommandDefinitionId>('@deepseek-ai/dsh-session-log-export'),
     name: 'export',

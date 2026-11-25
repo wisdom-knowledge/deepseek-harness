@@ -41,6 +41,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@deepseek-ai/dsh-credentials": "workspace:*",
     "@deepseek-ai/dsh-session-format": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
     "fflate": "^0.8.2",

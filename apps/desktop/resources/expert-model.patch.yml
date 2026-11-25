@@ -1,4 +1,7 @@
 # The desktop Host applies this overlay after the user's profile patches.
+- id: session-log-download
+  config:
+    trajectory: !!js 'process.env.DSH_EXPERT_TRAJECTORY_ORIGIN ? { origin: process.env.DSH_EXPERT_TRAJECTORY_ORIGIN, directory: process.env.DSH_EXPERT_TRAJECTORY_DIR, retryMs: 30000 } : undefined'
 - id: credentials
   config:
     processOnlyRefs: [TRUE_SOTA_API_KEY]

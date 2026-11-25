@@ -7,6 +7,7 @@
   },
   "files": [
     "src/archive.ts",
+    "src/trajectory.ts",
     "src/index.ts",
     "src/markdown.ts",
     "src/routes.ts"
@@ -17,6 +18,8 @@
     { "path": "../../attachment/attachment" },
     { "path": "../../util/brand" },
     { "path": "../../core/session" },
+    { "path": "../../core/agent" },
+    { "path": "../../credentials/credentials" },
     { "path": "../../interaction/commands" },
     { "path": "../../session/session-format" },
     { "path": "../../session/session-persistence" },

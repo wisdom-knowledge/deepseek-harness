@@ -427,6 +427,8 @@ async function main(): Promise<void> {
     hostEnvironment = expertHome === undefined ? environment : {
       ...environment,
       DSH_HOME: expertHome,
+      DSH_EXPERT_TRAJECTORY_ORIGIN: expertCloudOrigin ?? '',
+      DSH_EXPERT_TRAJECTORY_DIR: join(expertHome, 'trajectory-sync'),
       DSH_PUBLISHED_SKILL_DIR: publishedSkills,
       DSH_EXPERT_MODEL_BASE_URL: expertCloudOrigin ? new URL('/v1', expertCloudOrigin).href : 'https://unconfigured.invalid/v1',
       ...(expertSkillsDir !== undefined && existsSync(expertSkillsDir) ? { DSH_BUNDLED_SKILL_DIR: expertSkillsDir } : {}),
