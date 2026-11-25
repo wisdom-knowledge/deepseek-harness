@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Context } from '@deepseek-ai/cordis'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
+import SessionStore, { type SessionId } from '@deepseek-ai/dsh-session'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { FileSystem, FsError, type FsVersion, type FsDirEntry, type FsEditOutcome, type FsEditRequest, type FsInfo, type FsPathInfo, type FsTarget, type FsWriteOutcome } from '@deepseek-ai/dsh-fs'
 import * as SkillFileSystem from '../src/index.ts'
@@ -179,6 +180,54 @@ async function waitFor<T>(read: () => Promise<T>, accept: (value: T) => boolean)
 }
 
 describe('dsh-skill-filesystem plugin exports', () => {
+  it('pins published directories to each running turn while other sessions can start on the replacement', async () => {
+    const home = await tempDir('skill-published')
+    const root = `v1/${'a'.repeat(64)}`
+    const next = `v1/${'b'.repeat(64)}`
+    await writeSkill(join(home, root), 'interview', 'First')
+    await writeSkill(join(home, next), 'interview', 'Next')
+    const index = join(home, 'active.json')
+    await writeFile(index, JSON.stringify([root]))
+    vi.stubEnv('DSH_PUBLISHED_SKILL_DIR', home)
+    onTestFinished(() => { vi.unstubAllEnvs() })
+    const ctx = new Context()
+    await ctx.plugin(SkillRegistry)
+    const fiber = ctx.plugin(SkillFileSystem, { dshHome: home, agentsHome: home, watch: false })
+    await fiber
+    onTestFinished(() => fiber.dispose())
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(brandString<SessionId>('first'))
+    const other = ctx.sessions.create(brandString<SessionId>('second'))
+    const options = { scope: { session } }
+    session.append('turn/start', { turn: 1 })
+    await writeFile(index, JSON.stringify([next]))
+    other.append('turn/start', { turn: 1 })
+    expect((await ctx.skills.get('interview', options))?.description).toBe('First')
+    expect((await ctx.skills.get('interview', { scope: { session: other } }))?.description).toBe('Next')
+    session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    session.append('turn/start', { turn: 2 })
+    expect((await ctx.skills.get('interview', options))?.description).toBe('Next')
+  })
+
+  it('keeps bundled skills available when a published root fails discovery', async () => {
+    const home = await tempDir('skill-unreadable')
+    const root = `v1/${'a'.repeat(64)}`
+    await mkdir(join(home, root, 'interview', 'SKILL.md'), { recursive: true })
+    await writeFile(join(home, 'active.json'), JSON.stringify([root]))
+    const bundled = join(home, 'bundled')
+    await writeSkill(bundled, 'interview', 'Bundled')
+    vi.stubEnv('DSH_PUBLISHED_SKILL_DIR', home)
+    onTestFinished(() => { vi.unstubAllEnvs() })
+    const ctx = new Context()
+    await ctx.plugin(SkillRegistry)
+    const fiber = ctx.plugin(SkillFileSystem, { dshHome: home, agentsHome: home, bundledSkillDir: bundled, watch: false })
+    await fiber
+    onTestFinished(() => fiber.dispose())
+    const snapshot = await ctx.skills.snapshot()
+    expect(snapshot.complete).toBe(false)
+    expect(snapshot.skills.map(skill => skill.description)).toContain('Bundled')
+  })
+
   it('declares stable plugin metadata', () => {
     expect(SkillFileSystem.name).toBe('skill-filesystem')
     expect(SkillFileSystem.inject).toEqual(['skills'])

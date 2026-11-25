@@ -10,7 +10,7 @@
  */
 
 import { access, lstat, readdir, readFile, realpath, stat } from 'node:fs/promises'
-import { unwatchFile, watchFile, type Stats } from 'node:fs'
+import { readFileSync, unwatchFile, watchFile, type Stats } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import chokidar from 'chokidar'
@@ -27,6 +27,7 @@ import {
   type SkillDefinition,
   type SkillInvocationPolicy,
   type SkillLookupOptions,
+  type SkillViewOptions,
   type SkillProvider,
   type SkillProviderControl,
   type SkillProviderObservation,
@@ -175,7 +176,38 @@ export class FileSystemSkillProvider implements SkillProvider {
     const bundledSkillDir = config.bundledSkillDir
       ?? (this.includeDefaultRoots ? process.env.DSH_BUNDLED_SKILL_DIR : undefined)
     this.bundledSkillDir = bundledSkillDir === undefined ? undefined : resolve(bundledSkillDir)
+    const published = this.includeDefaultRoots ? process.env.DSH_PUBLISHED_SKILL_DIR : undefined
+    if (published) {
+      const index = join(published, 'active.json')
+      const current = (): string[] => {
+        try {
+          const roots: unknown = JSON.parse(readFileSync(index, 'utf8'))
+          if (!Array.isArray(roots) || !roots.every(root => typeof root === 'string' && /^[a-z\d][a-z\d._-]{0,79}\/[a-f\d]{64}$/i.test(root))) {
+            throw new Error('Invalid published Skill index')
+          }
+          return roots.map(root => join(published, root))
+        } catch (error) {
+          if (!hasErrorCode(error, 'ENOENT')) ctx.logger.warn(`Failed to read published Skill index: ${errorMessage(error)}`)
+          return []
+        }
+      }
+      const turns = new WeakMap<object, string[]>()
+      ctx.on('session/event', (session, event) => {
+        if (event.type === 'turn/start') turns.set(session, current())
+        else if (event.type === 'turn/end') turns.delete(session)
+        else return
+        control.invalidate()
+      })
+      watchFile(index, { persistent: false, interval: config.watchPollIntervalMs ?? DEFAULT_WATCH_POLL_INTERVAL_MS }, control.invalidate)
+      control.signal.addEventListener('abort', () => unwatchFile(index, control.invalidate), { once: true })
+      this.publishedRoots = (scope) => {
+        const session = scope && 'session' in scope ? scope.session : undefined
+        return (session && typeof session === 'object' ? turns.get(session) : undefined) ?? current()
+      }
+    }
   }
+
+  private readonly publishedRoots?: (scope: object | undefined) => string[]
 
   /**
    * Discover local skill summaries for a cwd-sensitive workspace.
@@ -183,7 +215,7 @@ export class FileSystemSkillProvider implements SkillProvider {
    * @returns candidates from readable roots with stable ranks. Failed roots are
    *   logged and omitted; root or watcher failures make the observation incomplete.
    */
-  async list(options: SkillLookupOptions): Promise<SkillCandidate[] | SkillProviderObservation> {
+  async list(options: SkillViewOptions): Promise<SkillCandidate[] | SkillProviderObservation> {
     const roots = await this.roots(options.cwd)
     let complete = true
     try {
@@ -193,12 +225,19 @@ export class FileSystemSkillProvider implements SkillProvider {
       complete = false
     }
     const candidates: SkillCandidate[] = []
-    for (const root of roots) {
+    const published = (this.publishedRoots?.(options.scope) ?? []).map((path): SkillRoot => ({
+      path, source: 'bundled', rank: BUNDLED_SKILL_RANK - 1, trustedHost: true,
+    }))
+    const publishedNames = new Set<string>()
+    for (const root of [...published, ...roots]) {
       options.signal?.throwIfAborted()
       try {
         const discovered = await discoverRoot(root, this.ctx, this.name)
         options.signal?.throwIfAborted()
-        candidates.push(...discovered)
+        if (root.rank === BUNDLED_SKILL_RANK - 1) {
+          for (const skill of discovered) publishedNames.add(skill.name)
+        }
+        candidates.push(...(root.rank === BUNDLED_SKILL_RANK ? discovered.filter(skill => !publishedNames.has(skill.name)) : discovered))
       } catch (error) {
         options.signal?.throwIfAborted()
         complete = false

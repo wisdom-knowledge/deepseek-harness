@@ -43,6 +43,8 @@ The catalog and the body have separate lifecycles: discovery parses frontmatter 
 
 ### Roots and priority
 
+With default roots enabled, `DSH_PUBLISHED_SKILL_DIR` points to an app-owned cache. Its `active.json` lists immutable `version/sha256` roots. A published skill overrides its bundled counterpart. Each running Session retains the index read at turn start. Loaded resource paths carry the version and digest in the Session history.
+
 Default roots are scanned in this provider's rank order:
 
 | Rank | Source | Path |

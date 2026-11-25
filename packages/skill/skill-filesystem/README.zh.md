@@ -43,6 +43,8 @@ skill 可以是被扫描根目录顶层的目录 bundle `<name>/SKILL.md`，也�
 
 ### 根目录与优先级
 
+启用默认根目录时，`DSH_PUBLISHED_SKILL_DIR` 指向 App 的缓存目录，里面的 `active.json` 列出不可变的 `版本号/摘要` 目录。同名已发布 Skill 优先于内置 Skill。Session 在每轮开始时固定本轮目录，加载后的资源路径在执行轨迹中保留版本号与摘要。
+
 默认根按该提供方的 rank 顺序扫描：
 
 | Rank | 来源 | 路径 |
