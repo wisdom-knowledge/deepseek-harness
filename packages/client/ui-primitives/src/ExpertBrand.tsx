@@ -3,6 +3,8 @@
 declare global {
   interface Window {
     readonly __DSH_EXPERT_DESKTOP__?: true
+    /** Installed release supplied by the expert Desktop main-window preload. */
+    readonly __DSH_EXPERT_VERSION__?: string
   }
 }
 

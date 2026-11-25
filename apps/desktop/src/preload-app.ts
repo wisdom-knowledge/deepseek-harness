@@ -4,7 +4,7 @@ import type { FileSaveResult } from '@deepseek-ai/dsh-client-ui-file-actions/typ
 import type { DesktopChannelState, DesktopChannelChangeResult } from '@deepseek-ai/dsh-client-ui-settings-general/types'
 import type { DesktopShortcutInput, ShortcutConfigSnapshot, ShortcutSaveResult } from '@deepseek-ai/dsh-client-shortcuts/protocol'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { DESKTOP_IPC, SCHEME, type DshDesktopProductApi, type DesktopUpdatePresentation } from './ipc.ts'
+import { DESKTOP_IPC, EXPERT_VERSION_ARGUMENT, SCHEME, type DshDesktopProductApi, type DesktopUpdatePresentation } from './ipc.ts'
 import { PLATFORM_IPC } from './platform-ipc.ts'
 import { markDocumentPlatform, syncWindowFullscreen } from './preload-platform.ts'
 import { syncNativeTheme } from './preload-theme.ts'
@@ -87,8 +87,10 @@ function createProductApi(): DshDesktopProductApi {
 }
 
 if (location.protocol === `${SCHEME}:` && location.hostname === 'app') {
-  if (process.isMainFrame && process.argv.includes('--dsh-expert-desktop')) {
+  const expertVersion = process.argv.find(arg => arg.startsWith(EXPERT_VERSION_ARGUMENT))?.slice(EXPERT_VERSION_ARGUMENT.length)
+  if (process.isMainFrame && expertVersion) {
     contextBridge.exposeInMainWorld('__DSH_EXPERT_DESKTOP__', true)
+    contextBridge.exposeInMainWorld('__DSH_EXPERT_VERSION__', expertVersion)
   }
   contextBridge.exposeInMainWorld('dshOnboarding', {
     hasApiKey: () => ipcRenderer.invoke(DESKTOP_IPC.onboardingApiKey) as Promise<boolean>,

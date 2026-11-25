@@ -113,6 +113,9 @@ export interface DshDesktopProductApi {
 /** Scheme of Desktop-owned application documents. */
 export const SCHEME = 'dsh-app'
 
+/** Main-window preload argument carrying the installed expert Desktop version. */
+export const EXPERT_VERSION_ARGUMENT = '--dsh-expert-version='
+
 /**
  * Reject IPC outside the allowed Desktop document origins.
  * @param event - IPC caller whose frame URL supplies the origin.

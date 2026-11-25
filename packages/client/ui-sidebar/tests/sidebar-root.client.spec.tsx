@@ -28,6 +28,7 @@ afterEach(() => {
   cleanup()
   delete document.documentElement.dataset.platform
   vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
   vi.useRealTimers()
   Reflect.deleteProperty(navigator, 'clipboard')
 })
@@ -145,6 +146,17 @@ function mountShell({ collapsed = false, width = 300, drawer = false, shortcuts 
 }
 
 describe('SidebarRoot shell', () => {
+  it('shows the installed expert version only with the expanded brand', async () => {
+    const version = '0.2.2-rc.5.20261125.17.1'
+    vi.stubGlobal('__DSH_EXPERT_VERSION__', version)
+    const shell = mountShell()
+    expect(screen.getByText(version)).toBeTruthy()
+    shell.rerender({ collapsed: true, width: 56 })
+    await waitFor(() => { expect(screen.queryByText(version)).toBeNull() })
+    shell.rerender({ collapsed: false, width: 260 })
+    expect(screen.getByText(version)).toBeTruthy()
+  })
+
   it('puts navigation and workspaces in one viewport without scrolling primary controls or the footer', () => {
     mountShell({ panels: [{ id: 'notes' as SidebarPanelMetadata['id'], order: 1, label: 'Notes' }] })
     const viewport = document.querySelector('[data-sidebar-scrollport]')!

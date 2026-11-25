@@ -35,7 +35,7 @@ import { installDesktopFileDrag } from './file-drag.ts'
 import { installDesktopDirectoryPicker } from './directory-picker.ts'
 import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { DesktopBackendController } from './backend-controller.ts'
-import { DESKTOP_IPC, SCHEME, assertDesktopSender, type DesktopUpdateState } from './ipc.ts'
+import { DESKTOP_IPC, EXPERT_VERSION_ARGUMENT, SCHEME, assertDesktopSender, type DesktopUpdateState } from './ipc.ts'
 import { readDeviceInfo } from './device-info.ts'
 import { desktopUpdateReadyConfirmation, formatDesktopMessage, resolveDesktopLocale, resolveDesktopStartupLocale } from './locale.ts'
 import type { DesktopMessages } from './locale.ts'
@@ -297,7 +297,7 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     } : {}),
     webPreferences: {
       preload,
-      ...(primary && expertEdition ? { additionalArguments: ['--dsh-expert-desktop'] } : {}),
+      ...(primary && expertEdition ? { additionalArguments: [EXPERT_VERSION_ARGUMENT + app.getVersion()] } : {}),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,

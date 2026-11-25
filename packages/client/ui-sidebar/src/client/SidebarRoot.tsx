@@ -327,7 +327,7 @@ export function SidebarRoot({
               </span>
             </span>
           )
-          return darwinDesktop || !canStartSession
+          const brand = darwinDesktop || !canStartSession
             ? <span className={clsx(css.brand, css.wide)}>{identity}</span>
             : (
               <button
@@ -343,6 +343,13 @@ export function SidebarRoot({
                 {identity}
               </button>
             )
+          const version = window.__DSH_EXPERT_VERSION__
+          return version === undefined ? brand : (
+            <div className={clsx(css.versionedBrand, css.wide)}>
+              {brand}
+              <span className={css.expertVersion} title={version}>{version}</span>
+            </div>
+          )
         })()}
         {!darwinDesktop && toggle}
       </div>
