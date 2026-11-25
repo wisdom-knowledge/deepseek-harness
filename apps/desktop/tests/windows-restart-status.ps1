@@ -18,6 +18,7 @@ foreach ($interrupt in 'window', 'owner') {
             if ($owner.HasExited -or $timer.Elapsed.TotalSeconds -gt 12) { throw 'No status window under the private owner' }
             Start-Sleep -Milliseconds 40
         } while ($true)
+        if ($window.MainWindowTitle -ne 'Restart Status Test') { throw 'Status window has the wrong product name' }
         New-Item -ItemType File -Path $release | Out-Null
         while (-not (Test-Path -LiteralPath $released)) {
             if ($owner.HasExited -or $timer.Elapsed.TotalSeconds -gt 15) { throw 'Owner did not release its working directory' }

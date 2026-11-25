@@ -81,6 +81,7 @@ export function createElectronBuilderConfig(
   if (skipNotarization && (unsigned || resolvedPlatform !== 'darwin')) throw new Error('Skipping notarization requires a signed macOS build')
   const packagesMacOS = targetPlatform === 'darwin' || (targetPlatform === undefined && hostPlatform === 'darwin')
   const packagesWindows = resolvedPlatform === 'win32'
+  const productName = expertEdition && packagesWindows ? '一面千识' : 'DeepSeek Harness'
   const policy = packagesMacOS && unsigned ? undefined : resolveDesktopPolicyEnvironment(env)
   if (resolvedPlatform === 'win32') installWindowsDirectoryInstaller()
   const macOSSigning = packagesMacOS && !unsigned ? resolveMacOSSigningEnvironment(env) : undefined
@@ -132,7 +133,7 @@ export function createElectronBuilderConfig(
       ...buildVersion === productVersion ? {} : { version: buildVersion },
       ...packaged === undefined ? {} : { dshBuildCommit: packaged.commit, dshBuildDirty: packaged.dirty },
     },
-    productName: 'DeepSeek Harness',
+    productName,
     // The default copyright uses author.name; this line names the product instead.
     copyright: `Copyright © ${new Date().getFullYear()} \${productName}`,
     // Unsigned builds carry their own suffix so a shared file can never pass for a release artifact.
@@ -145,7 +146,7 @@ export function createElectronBuilderConfig(
       if (resolvedPlatform !== 'win32') return true
       await promisify(execFile)('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
         fileURLToPath(new URL('./prepare-windows-installer.ps1', import.meta.url)),
-        '-OutputDirectory', join(buildPaths.root, 'installer-ui')], {
+        '-OutputDirectory', join(buildPaths.root, 'installer-ui'), ...(expertEdition ? ['-ExpertEdition'] : [])], {
         env: scrubWindowsSigningEnvironment(env), windowsHide: true,
       })
       await writeFile(join(buildPaths.root, 'installer-ui', 'strings.nsh'), renderInstallerStrings(readInstallerLocales()), 'utf8')
@@ -266,6 +267,8 @@ export function createElectronBuilderConfig(
       )
     },
     win: {
+      // Existing installations are recognized by the registered directory and executable filename.
+      ...(expertEdition ? { executableName: 'DeepSeek Harness' } : {}),
       icon: windowsIcon,
       forceCodeSigning: !unsigned,
       signtoolOptions: {

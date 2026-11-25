@@ -1,6 +1,6 @@
-/** Render the expert edition application and Windows tray icons from the company logo. */
+/** Render the expert edition application, tray and installer artwork from the company logo. */
 
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import sharp from 'sharp'
 import { packIco, TRAY_ICON_SIZES } from './render-tray-icon.ts'
 
@@ -31,3 +31,22 @@ await Promise.all([
   writeFile(new URL('../resources/icon-expert.png', import.meta.url), icon),
   writeFile(new URL('../resources/tray-expert-windows.ico', import.meta.url), tray),
 ])
+
+const installerAssets = new URL('../installer/assets/expert/', import.meta.url)
+await mkdir(installerAssets, { recursive: true })
+for (const dark of [false, true]) {
+  const source = dark ? logo.replace('<svg ', '<svg fill="white" ') : logo
+  const background = dark ? '#151517' : '#ffffff'
+  for (const scale of [1, 2]) {
+    const width = 332 * scale
+    const wordmark = await sharp(Buffer.from(source), { density: 144 }).resize({ width }).png().toBuffer()
+    const banner = sharp({ create: { width: 600 * scale, height: 196 * scale, channels: 3, background } })
+      .composite([{ input: wordmark, gravity: 'center' }])
+    const filename = `brand${dark ? '-dark' : ''}${scale === 2 ? '-2x' : ''}.png`
+    await writeFile(new URL(filename, installerAssets), await banner.png().toBuffer())
+  }
+}
+const sidebarLogo = await sharp(Buffer.from(logo)).resize({ width: 140 }).png().toBuffer()
+await writeFile(new URL('uninstaller-sidebar.png', installerAssets), await sharp({
+  create: { width: 164, height: 314, channels: 3, background: '#ffffff' },
+}).composite([{ input: sidebarLogo, gravity: 'center' }]).png().toBuffer())

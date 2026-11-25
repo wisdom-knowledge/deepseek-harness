@@ -1,6 +1,6 @@
 <# Compile the x86 DWM helper and raster assets embedded in the NSIS installer. #>
 [CmdletBinding()]
-param([string]$OutputDirectory, [switch]$TestProgress, [switch]$CompileProgressOnly)
+param([string]$OutputDirectory, [switch]$TestProgress, [switch]$CompileProgressOnly, [switch]$ExpertEdition)
 $ErrorActionPreference = 'Stop'
 $installerRoot = Join-Path $PSScriptRoot '../installer'
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $PSScriptRoot '../.desktop-build/targets/win-x64/installer-ui' }
@@ -68,8 +68,10 @@ if ($TestProgress -or $CompileProgressOnly) {
     }
 }
 Add-Type -AssemblyName System.Drawing
+$assetDirectory = Join-Path $installerRoot 'assets'
+if ($ExpertEdition) { $assetDirectory = Join-Path $assetDirectory 'expert' }
 foreach ($asset in @('brand', 'brand-2x', 'brand-dark', 'brand-dark-2x', 'uninstaller-sidebar')) {
-    $image = [Drawing.Image]::FromFile((Join-Path $installerRoot "assets/$asset.png"))
+    $image = [Drawing.Image]::FromFile((Join-Path $assetDirectory "$asset.png"))
     try {
         $bitmap = [Drawing.Bitmap]::new($image.Width, $image.Height, [Drawing.Imaging.PixelFormat]::Format24bppRgb)
         try {

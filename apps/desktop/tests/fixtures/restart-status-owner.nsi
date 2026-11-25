@@ -3,6 +3,7 @@ Unicode true
 RequestExecutionLevel user
 SilentInstall silent
 OutFile "${OWNER_EXE}"
+!define PRODUCT_NAME "Restart Status Test"
 !include "LogicLib.nsh"
 !include "${BANNER_INCLUDE}"
 LoadLanguageFile "${NSISDIR}\Contrib\Language files\English.nlf"

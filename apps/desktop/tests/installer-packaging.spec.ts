@@ -43,6 +43,10 @@ describe('installer preparation preserves application dependencies', () => {
     expect(readFileSync(config.extraResources.find(resource => resource.to === 'icon.png')!.from)).toEqual(icon)
     const tray = config.extraResources.find(resource => resource.to === 'tray.ico')
     if (platform === 'win32') {
+      expect(config.productName).toBe('一面千识')
+      expect(config.win.executableName).toBe('DeepSeek Harness')
+      await config.beforeBuild()
+      expect(execute).toHaveBeenCalledWith('powershell.exe', expect.arrayContaining(['-ExpertEdition']), expect.anything())
       expect(readFileSync(tray!.from)).toEqual(readFileSync(new URL('../resources/tray-expert-windows.ico', import.meta.url)))
     } else {
       expect(tray).toBeUndefined()

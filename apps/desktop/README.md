@@ -223,7 +223,7 @@ Run `pnpm run test:expert-gate` at the repository root to check the launch form,
 
 Expert conversations use TrueSOTA’s `gpt-6.1-sol`, including the next turn of a resumed conversation. The expert profile hides the composer model picker, the `/model` command and the Models settings page, and the Host rejects model switches.
 
-The expanded expert sidebar shows the installed app version below the MeetChances logo. The sidebar feedback button opens the MeetChances desktop feedback form in Feishu with the available app version and device details prefilled.
+The expanded expert sidebar shows the installed app version below the MeetChances logo. The sidebar feedback button opens the MeetChances desktop feedback form in Feishu with the available app version and device details prefilled. The Windows expert installer displays the product name 一面千识 and uses the same wordmark on the welcome, progress and finish pages in both themes.
 
 The expert edition bundles `ale-task-interviewer` and `ale-reference-interviewer` from `resources/expert-skills/`. From source, the expert Host discovers that same directory through the standard skill provider. `DSH_EXPERT_SKILLS_DIR` optionally selects a different absolute source directory. That directory must contain both skills with their `SKILL.md` and companion files. Packaging stops if a required `SKILL.md` is missing or empty.
 

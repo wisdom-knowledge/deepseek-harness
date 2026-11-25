@@ -20,6 +20,8 @@ it('generates Japanese NSIS strings from the same files that select packaged lan
   const locales = readInstallerLocales()
   expect(locales.map(locale => locale.id)).toEqual(['en_US', 'de_DE', 'es_ES', 'fr_FR', 'ja_JP', 'pt_BR', 'ru_RU', 'zh_CN'])
   const source = renderInstallerStrings(locales)
+  expect(source).toContain('"${PRODUCT_NAME} is running.')
+  expect(source).not.toContain('DeepSeek Harness')
   expect(source).toContain('LangString INSTALLER_INSTALL ${LANG_JAPANESE} "今すぐインストール"')
   expect(source).toContain('LangString INSTALLER_NATIVE_PROGRESS ${LANG_JAPANESE} "インストールを準備しています… %d%%"')
   expect(source).toContain('!ifdef LANG_JAPANESE\n')

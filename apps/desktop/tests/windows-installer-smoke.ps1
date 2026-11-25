@@ -15,6 +15,9 @@ $processes = [Collections.Generic.List[Diagnostics.Process]]::new()
 $results = [Collections.Generic.List[string]]::new()
 $expected = Get-Content (Join-Path $PSScriptRoot 'expected/windows-installer.json') -Raw | ConvertFrom-Json
 $resource = Get-Content (Join-Path $PSScriptRoot "../installer/locales/$Language.json") -Encoding UTF8 -Raw | ConvertFrom-Json
+foreach ($property in $resource.strings.PSObject.Properties) {
+    $property.Value = $property.Value.Replace('{productName}', $ProductName)
+}
 $localizedCopy = @{ $Language = $resource.strings }
 function Wait-Control([Diagnostics.Process]$Process, [string]$Text, [switch]$Dialog) {
     $timer = [Diagnostics.Stopwatch]::StartNew()
