@@ -95,7 +95,7 @@ const rendererConsole = new RendererConsoleTail()
 const expertEdition = app.isPackaged ? existsSync(join(process.resourcesPath, 'expert-model.patch.yml'))
   : process.env.DSH_EXPERT_EDITION === '1' || process.env.DSH_EXPERT_MODEL_FILE !== undefined
 if (expertEdition) {
-  const data = join(app.getPath('appData'), EXPERT_DESKTOP_NAME)
+  const data = (!app.isPackaged && process.env.DSH_DESKTOP_USER_DATA_DIR) || join(app.getPath('appData'), EXPERT_DESKTOP_NAME)
   mkdirSync(data, { recursive: true, mode: 0o700 })
   app.setName(EXPERT_DESKTOP_NAME)
   app.setPath('userData', data)
