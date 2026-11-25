@@ -8,7 +8,7 @@ const granted = z.object({ allowed: z.literal(true), api_key: z.string().regex(/
 type Admission = { issue: ExpertGateIssue } | { apiKey: string }
 
 /**
- * Request a freshly verified assignment for this launch.
+ * Request a freshly verified assignment for this launch with a 20-second deadline.
  * @param uuid - Question identifier from the form.
  * @param talentId - Claimant's decimal ID.
  * @param origin - HTTPS origin of the expert gateway.
@@ -27,7 +27,7 @@ export async function requestExpertKey(uuid: unknown, talentId: unknown, origin:
   try {
     response = await request(new URL('/v1/questions/claim-key', url), {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uuid: uuid.trim(), talent_id: Number(talentId) }),
-      cache: 'no-store', redirect: 'error', credentials: 'include', signal: AbortSignal.timeout(12_000),
+      cache: 'no-store', redirect: 'error', credentials: 'include', signal: AbortSignal.timeout(20_000),
     })
   } catch { return { issue: 'network' } }
   if (response.status === 401 || response.status === 403) return { issue: 'identity' }

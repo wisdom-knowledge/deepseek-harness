@@ -13,11 +13,13 @@ describe('expert key admission', () => {
     },
   )
   it('reads the current assignment on every submission', async () => {
+    using timeout = vi.spyOn(AbortSignal, 'timeout')
     const fetch = vi.fn().mockResolvedValueOnce(Response.json({ allowed: true, api_key: 'fixture-a' }))
       .mockResolvedValueOnce(Response.json({ allowed: true, api_key: 'fixture-b' }))
     expect(await requestExpertKey('question', '4', origin, fetch)).toEqual({ apiKey: 'fixture-a' })
     expect(await requestExpertKey('question', '4', origin, fetch)).toEqual({ apiKey: 'fixture-b' })
     expect(fetch).toHaveBeenCalledTimes(2)
+    expect(timeout.mock.calls).toEqual([[20_000], [20_000]])
   })
   it('blocks local input errors, incomplete responses and unavailable services', async () => {
     const offline = vi.fn(async () => { throw new Error('offline') })
