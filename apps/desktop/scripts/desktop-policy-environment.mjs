@@ -13,10 +13,14 @@ function origin(value, name) {
 /**
  * Resolve mandatory policy metadata before preparing artifacts or accessing signing hardware.
  * @param {NodeJS.ProcessEnv} environment File-owned release settings; the unselected origin is not required.
- * @returns {{ origin: string, allowedPageOrigins: string[], authentication: 'anonymous' | 'feishu-test', [key: string]: unknown }} Selected policy.
+ * @param platform Target platform used to select local package behavior.
+ * @param unsigned Whether the package is built without release signing.
+ * @returns Policy metadata, or undefined for local macOS and internal Windows expert packages built without release signing.
  */
-export function resolveDesktopPolicyEnvironment(environment) {
+export function resolveDesktopPolicyEnvironment(environment, platform, unsigned = false) {
+  if (unsigned && platform === 'darwin') return undefined
   const deployment = resolveDesktopAutoUpdateEnvironment(environment)
+  if (unsigned && platform === 'win32' && deployment === 'test' && environment.DSH_EXPERT_EDITION === '1') return undefined
   const name = deployment === 'test' ? 'DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN' : 'DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN'
   const selected = origin(environment[name], name)
   let settings = {}

@@ -10,6 +10,9 @@ export interface DesktopPolicyEnvironment {
 /**
  * Resolve policy settings before artifact preparation or signing.
  * @param environment File-owned release settings; only the selected origin is required.
- * @returns Policy metadata with deployment-selected origin and authentication.
+ * @param platform Target platform used to select local package behavior.
+ * @param unsigned Whether the package is built without release signing.
+ * @returns Policy metadata, or undefined for local macOS and internal Windows expert packages built without release signing.
  */
 export function resolveDesktopPolicyEnvironment(environment: NodeJS.ProcessEnv): DesktopPolicyEnvironment
+export function resolveDesktopPolicyEnvironment(environment: NodeJS.ProcessEnv, platform: NodeJS.Platform, unsigned?: boolean): DesktopPolicyEnvironment | undefined
