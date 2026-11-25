@@ -227,6 +227,8 @@ The expanded expert sidebar shows the installed app version below the MeetChance
 
 The expert edition bundles `ale-task-interviewer` and `ale-reference-interviewer` from `resources/expert-skills/`. From source, the expert Host discovers that same directory through the standard skill provider. `DSH_EXPERT_SKILLS_DIR` optionally selects a different absolute source directory. That directory must contain both skills with their `SKILL.md` and companion files. Packaging stops if a required `SKILL.md` is missing or empty.
 
+After the first successful question check at launch, the expert app queries the cloud function for the Skill manifest, downloads every listed ZIP and verifies its SHA-256. It reuses installed directories with the same version and digest and atomically selects the complete set. Each turn retains its selected directories until it ends. The bundled skills remain available during an update.
+
 The API-key input starts empty and uses `autocomplete="new-password"` to ask Chromium not to autofill saved login passwords.
 
 Repeated launches and `dsh://open` keep the workspace hidden until the startup credential check or a welcome action permits entry. Entering from Welcome places keyboard focus on the document without selecting a sidebar control; Tab navigation remains available.

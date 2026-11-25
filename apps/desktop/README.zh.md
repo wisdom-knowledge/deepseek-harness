@@ -227,6 +227,8 @@ Web 侧的对应命令是 `pnpm run dev:web` 与 `pnpm run start:web`，见[开�
 
 专家版从 `resources/expert-skills/` 内置 `ale-task-interviewer` 和 `ale-reference-interviewer`。从源码启动时，专家版 Host 通过标准 Skill 提供方读取同一目录。也可以用 `DSH_EXPERT_SKILLS_DIR` 指定其他源码目录的绝对路径，该目录需要包含两份 Skill 的 `SKILL.md` 和随附文件。打包遇到缺失或为空的必需 `SKILL.md` 时会报错退出。
 
+每次启动后首次通过领题校验时，专家版向云函数查询 Skill 清单，逐项下载全部 ZIP 并校验 SHA-256。已安装相同版本和摘要时复用该目录，全部校验通过后一次切换本地清单。每轮执行固定使用开始时选定的目录，后台更新期间可以继续使用内置 Skill。
+
 API Key 输入框初始为空，并通过 `autocomplete="new-password"` 请求 Chromium 不要自动填入已保存的登录密码。
 
 重复启动和 `dsh://open` 会保持工作区隐藏，直到启动凭据检查或欢迎页操作允许进入。从 Welcome 进入时，键盘焦点落在文档上，不选中侧边栏控件；Tab 导航仍可使用。

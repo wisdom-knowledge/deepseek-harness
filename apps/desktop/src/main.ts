@@ -1,6 +1,7 @@
 /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
 import { installFileActions } from './file-actions.ts'
+import { hasExpertSkill, updateExpertSkills, ExpertSkillAccessDenied } from './expert-skills.ts'
 import { configurationFailure, channelSaveFailure, configurationMessage } from './update-configuration.ts'
 import type { DesktopChannelState, DesktopChannelChangeResult } from '@deepseek-ai/dsh-client-ui-settings-general/types'
 import { DesktopUpdateSettings } from './update-settings.ts'
@@ -402,6 +403,8 @@ async function main(): Promise<void> {
       : process.env.DSH_EXPERT_SKILLS_DIR ?? join(app.getAppPath(), 'resources', 'expert-skills')
     : undefined
   const paths = resolveDesktopPaths(expertHome)
+  const publishedSkills = join(app.getPath('userData'), 'published-skills')
+  let skillUpdate: Promise<void> | undefined
   const development = !app.isPackaged
   const primaryRuntime = development
     ? developmentPrimaryRuntime()
@@ -424,6 +427,7 @@ async function main(): Promise<void> {
     hostEnvironment = expertHome === undefined ? environment : {
       ...environment,
       DSH_HOME: expertHome,
+      DSH_PUBLISHED_SKILL_DIR: publishedSkills,
       DSH_EXPERT_MODEL_BASE_URL: expertCloudOrigin ? new URL('/v1', expertCloudOrigin).href : 'https://unconfigured.invalid/v1',
       ...(expertSkillsDir !== undefined && existsSync(expertSkillsDir) ? { DSH_BUNDLED_SKILL_DIR: expertSkillsDir } : {}),
     }
@@ -1452,6 +1456,27 @@ async function main(): Promise<void> {
           if (!welcomeBackend) throw new Error('desktop welcome: backend unavailable')
           try {
             await welcomeBackend.provisionExpertModel(apiKey)
+            if (!expertCloudOrigin) throw new Error('Expert cloud origin missing')
+            const localSkillsReady = hasExpertSkill(publishedSkills, expertSkillsDir)
+            skillUpdate ??= updateExpertSkills(publishedSkills, expertCloudOrigin, apiKey).catch(async (error: unknown) => {
+              if (error instanceof ExpertSkillAccessDenied) {
+                expertConfirmed = false
+                mainWindow?.destroy()
+                quitWithoutConfirmation()
+                return
+              }
+              console.warn('Expert Skill update failed', error)
+              if (!localSkillsReady) { skillUpdate = undefined; throw error }
+              if (!quitting) await dialog.showMessageBox({ type: 'warning', message: locale.messages.skillUpdateUnavailable })
+            })
+            if (!localSkillsReady) {
+              await skillUpdate
+              if (!hasExpertSkill(publishedSkills, expertSkillsDir)) {
+                skillUpdate = undefined
+                throw new Error('No usable expert Skill')
+              }
+            }
+            if (quitting) return
             expertConfirmed = true
             await enterWorkspace()
           }
