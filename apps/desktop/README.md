@@ -221,7 +221,7 @@ Set `DSH_EXPERT_EDITION=1` for expert builds and `DSH_EXPERT_CLOUD_ORIGIN=https:
 
 Run `pnpm run test:expert-gate` at the repository root to check the launch form, eligibility decisions, IPC admission and workspace creation. Pushes and pull requests to `expert-desktop` run the same suite. Expert packaging runs it before building and stops on failure. Successful admission tests use fixtures. Live acceptance requires an active project 229 question UUID and its bound expert ID.
 
-Expert conversations use TrueSOTA’s `gpt-6.1-sol`, including the next turn of a resumed conversation. The expert profile hides the composer model picker, the `/model` command and the Models settings page, and the Host rejects model switches.
+Expert conversations use TrueSOTA’s `gpt-6.1-sol`, configured for text and image input, including the next turn of a resumed conversation. The expert profile hides the composer model picker, the `/model` command and the Models settings page, and the Host rejects model switches.
 
 The expanded expert sidebar shows the installed app version below the MeetChances logo. The sidebar feedback button opens the MeetChances desktop feedback form in Feishu with the available app version and device details prefilled. The Windows expert installer displays the product name 一面千识 and uses the same wordmark on the welcome, progress and finish pages in both themes.
 

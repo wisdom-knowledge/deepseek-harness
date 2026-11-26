@@ -19,6 +19,7 @@
         baseURL: !!js process.env.DSH_EXPERT_MODEL_BASE_URL
         models:
           - id: gpt-6.1-sol
+            input: [text, image]
 - id: llm-deepseek
   disabled: true
 - id: llm-deepseek-account
