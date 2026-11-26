@@ -122,7 +122,7 @@ export function validateDesktopPackageEnvironment(environment, target, options =
   resolveDesktopTargetBuildPaths(environment, target.platform, target.arch)
   resolveDesktopAppId(environment)
   resolveNpmRegistry(environment)
-  if (target.platform !== 'darwin' || !options.unsigned) resolveDesktopPolicyEnvironment(environment)
+  resolveDesktopPolicyEnvironment(environment, target.platform, options.unsigned)
   if (target.platform === 'darwin') resolveMacOSPackageSettings(environment)
   else resolveWindowsPackageSettings(environment)
   if (options.unsigned) return

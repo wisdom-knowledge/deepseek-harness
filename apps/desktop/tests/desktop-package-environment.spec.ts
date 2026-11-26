@@ -23,6 +23,14 @@ async function withDirectory(action: (directory: string) => Promise<void>): Prom
 }
 
 describe('Desktop local packaging configuration', () => {
+  it('omits mandatory update settings for unsigned Windows expert test packages', () => {
+    const env = { DSH_EXPERT_EDITION: '1', DSH_DESKTOP_APP_ID: 'com.meetchances.expert-assistant' }
+    expect(() => validateDesktopPackageEnvironment(env, WINDOWS, { unsigned: true })).not.toThrow()
+    expect(() => validateDesktopPackageEnvironment(env, WINDOWS)).toThrow('DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN')
+    expect(() => validateDesktopPackageEnvironment({ ...env, DSH_EXPERT_EDITION: '0' }, WINDOWS, { unsigned: true })).toThrow('DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN')
+    expect(() => validateDesktopPackageEnvironment({ ...env, DSH_DESKTOP_AUTO_UPDATE_ENV: 'production' }, WINDOWS, { unsigned: true })).toThrow('DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN')
+  })
+
   it('loads file-owned compression and defaults to fast Windows archive compression', async () => {
     expect(resolveWindowsPackageSettings({}).compressionLevel).toBe(3)
     await withDirectory(async (directory) => {
